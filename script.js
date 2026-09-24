@@ -18,6 +18,10 @@ const elements = {
   previewSkills: document.querySelector("#previewSkills"),
   previewProjects: document.querySelector("#previewProjects"),
   futureProjectForm: document.querySelector("#futureProjectForm"),
+  futureProjectName: document.querySelector("#futureProjectName"),
+  futureProjectTech: document.querySelector("#futureProjectTech"),
+  futureProjectLink: document.querySelector("#futureProjectLink"),
+  futureProjectDescription: document.querySelector("#futureProjectDescription"),
   loadProjectsButton: document.querySelector("#loadProjectsButton"),
   printResumeButton: document.querySelector("#printResumeButton"),
 };
@@ -66,6 +70,7 @@ const bundledGithubProjects = [
 
 const state = {
   projects: [...bundledGithubProjects],
+  latestProjectRequestId: 0,
 };
 
 function escapeHtml(value) {
@@ -139,6 +144,8 @@ function updatePreview() {
 }
 
 function renderProjectChecklist() {
+  elements.projectChecklist.setAttribute("aria-busy", "false");
+
   if (!state.projects.length) {
     elements.projectChecklist.innerHTML =
       '<p class="empty-state">No projects yet. Load a GitHub profile or add a future project below.</p>';
@@ -193,7 +200,10 @@ function mergeProjects(newProjects) {
 
 async function loadGithubProjects() {
   const username = elements.githubUsername.value.trim() || "Syrthax";
+  const requestId = state.latestProjectRequestId + 1;
+  state.latestProjectRequestId = requestId;
   elements.projectStatus.textContent = `Loading projects from @${username}...`;
+  elements.projectChecklist.setAttribute("aria-busy", "true");
   elements.loadProjectsButton.disabled = true;
 
   try {
@@ -231,9 +241,17 @@ async function loadGithubProjects() {
         source: "github",
       }));
 
+    if (requestId !== state.latestProjectRequestId) {
+      return;
+    }
+
     mergeProjects(projects);
     elements.projectStatus.textContent = `Loaded ${projects.length} GitHub project${projects.length === 1 ? "" : "s"} from @${username}.`;
   } catch (error) {
+    if (requestId !== state.latestProjectRequestId) {
+      return;
+    }
+
     if (username.toLowerCase() === "syrthax") {
       elements.projectStatus.textContent =
         "Live GitHub loading is unavailable right now, so the page is showing the bundled project list for @Syrthax. You can still add and select future projects manually.";
@@ -241,17 +259,20 @@ async function loadGithubProjects() {
       elements.projectStatus.textContent = `Unable to load GitHub projects for @${username}. Keeping the current project list in place.`;
     }
   } finally {
-    elements.loadProjectsButton.disabled = false;
+    if (requestId === state.latestProjectRequestId) {
+      elements.projectChecklist.setAttribute("aria-busy", "false");
+      elements.loadProjectsButton.disabled = false;
+    }
   }
 }
 
 function addFutureProject(event) {
   event.preventDefault();
 
-  const projectName = document.querySelector("#futureProjectName").value.trim();
-  const projectTech = document.querySelector("#futureProjectTech").value.trim();
-  const projectLink = normaliseUrl(document.querySelector("#futureProjectLink").value.trim());
-  const projectDescription = document.querySelector("#futureProjectDescription").value.trim();
+  const projectName = elements.futureProjectName.value.trim();
+  const projectTech = elements.futureProjectTech.value.trim();
+  const projectLink = normaliseUrl(elements.futureProjectLink.value.trim());
+  const projectDescription = elements.futureProjectDescription.value.trim();
 
   if (!projectName) {
     return;
