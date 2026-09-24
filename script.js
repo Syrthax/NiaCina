@@ -197,13 +197,28 @@ async function loadGithubProjects() {
   elements.loadProjectsButton.disabled = true;
 
   try {
-    const response = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}/repos?per_page=100&sort=updated`);
+    const repositories = [];
+    let page = 1;
 
-    if (!response.ok) {
-      throw new Error(`GitHub returned ${response.status}`);
+    while (true) {
+      const response = await fetch(
+        `https://api.github.com/users/${encodeURIComponent(username)}/repos?per_page=100&sort=updated&page=${page}`,
+      );
+
+      if (!response.ok) {
+        throw new Error(`GitHub returned ${response.status}`);
+      }
+
+      const pageRepositories = await response.json();
+      repositories.push(...pageRepositories);
+
+      if (pageRepositories.length < 100) {
+        break;
+      }
+
+      page += 1;
     }
 
-    const repositories = await response.json();
     const projects = repositories
       .filter((repository) => !repository.fork)
       .map((repository) => ({

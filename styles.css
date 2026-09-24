@@ -275,3 +275,27 @@ textarea {
     padding: 1.5rem;
   }
 }
+
+@media print {
+  body {
+    background: #fff;
+  }
+
+  .hero,
+  .form-panel {
+    display: none !important;
+  }
+
+  .layout {
+    width: 100%;
+    display: block;
+    padding: 0;
+  }
+
+  .preview-panel,
+  .resume-preview {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+}
