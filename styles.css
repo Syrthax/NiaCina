@@ -556,6 +556,173 @@ textarea {
   color: var(--warn-text);
 }
 
+/* ---------- Skill suggestions ---------- */
+
+.chip-input {
+  position: relative;
+}
+
+.suggest-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-modal);
+}
+
+.suggest-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.suggest-list li.is-active {
+  background: var(--subtle);
+}
+
+.suggest-list mark {
+  background: none;
+  color: inherit;
+  font-weight: 600;
+}
+
+.suggest-category {
+  font-size: 0.75rem;
+  color: var(--faint);
+}
+
+/* ---------- Grammar suggestions ---------- */
+
+.grammar-hints {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--focus);
+  border-radius: var(--radius-sm);
+  background: var(--panel-tint);
+  font-size: 0.8125rem;
+  transition: opacity 0.15s ease;
+}
+
+.entry-fields .grammar-hints {
+  grid-column: 1 / -1;
+}
+
+/* Text changed since the last check; a fresh one is on its way. */
+.grammar-hints.is-stale {
+  opacity: 0.5;
+}
+
+.grammar-title {
+  margin: 0;
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.grammar-issue {
+  display: grid;
+  gap: 0.3rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.grammar-title + .grammar-issue {
+  padding-top: 0;
+  border-top: none;
+}
+
+.grammar-context,
+.grammar-message {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.grammar-context {
+  color: var(--text);
+}
+
+.grammar-problem {
+  padding: 0 1px;
+  border-radius: 2px;
+  background: transparent;
+  color: inherit;
+  text-decoration: underline wavy var(--danger);
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
+}
+
+.grammar-message {
+  color: var(--muted);
+}
+
+.grammar-message code {
+  font-family: inherit;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.grammar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.grammar-fix,
+.grammar-ignore {
+  padding: 0.25rem 0.55rem;
+  font-size: 0.8125rem;
+}
+
+.grammar-fix {
+  border-color: var(--line-strong);
+  background: var(--panel);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.grammar-fix:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: var(--subtle);
+}
+
+.grammar-ignore {
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+.grammar-ignore:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--subtle);
+  color: var(--text);
+}
+
+.entry-grammar {
+  flex-shrink: 0;
+  padding: 0.05rem 0.4rem;
+  border-radius: 4px;
+  background: var(--subtle);
+  color: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+
 /* ---------- Entries ---------- */
 
 .entry-list {

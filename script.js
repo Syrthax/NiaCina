@@ -137,6 +137,7 @@ const elements = {
       ...PROFILE_FIELDS,
       "skillChips",
       "skillInput",
+      "skillSuggestList",
       "skillEditor",
       "skillsCount",
       "importSkillsButton",
@@ -632,7 +633,118 @@ function removeSkill(index) {
 function commitSkillInput() {
   const pending = elements.skillInput.value;
   elements.skillInput.value = "";
-  addSkills(normaliseList(pending));
+  closeSkillAutocomplete();
+  addSkills(normaliseList(pending).map(canonicalSkill));
+}
+
+// ---------------------------------------------------------------------------
+// Skill autocomplete (catalog lives in skills.js)
+// ---------------------------------------------------------------------------
+
+const MAX_SKILL_SUGGESTIONS = 8;
+
+const SKILL_INDEX = SKILL_CATALOG.map(([name, category, aliases = []], order) => ({
+  name,
+  category,
+  order,
+  lower: name.toLowerCase(),
+  words: name.toLowerCase().split(/[\s./&+-]+/).filter(Boolean),
+  aliases: aliases.map((alias) => alias.toLowerCase()),
+}));
+
+const skillAutocomplete = { items: [], active: -1, query: "" };
+
+// Typed text that exactly matches a catalog skill or alias uses the catalog spelling ("js" -> "JavaScript").
+function canonicalSkill(value) {
+  const lower = value.trim().toLowerCase();
+  const match = SKILL_INDEX.find((skill) => skill.lower === lower || skill.aliases.includes(lower));
+  return match ? match.name : value.trim();
+}
+
+// Lower is better; -1 means no match.
+function rankSkill(skill, query) {
+  if (skill.lower === query) return 0;
+  if (skill.aliases.includes(query)) return 1;
+  if (skill.lower.startsWith(query)) return 2;
+  if (skill.aliases.some((alias) => alias.startsWith(query))) return 3;
+  if (skill.words.some((word) => word.startsWith(query))) return 4;
+  if (skill.lower.includes(query)) return 5;
+  return -1;
+}
+
+function highlightMatch(name, query) {
+  const index = name.toLowerCase().indexOf(query);
+  if (!query || index < 0) {
+    return escapeHtml(name);
+  }
+  return (
+    escapeHtml(name.slice(0, index)) +
+    `<mark>${escapeHtml(name.slice(index, index + query.length))}</mark>` +
+    escapeHtml(name.slice(index + query.length))
+  );
+}
+
+function updateSkillAutocomplete() {
+  const query = elements.skillInput.value.trim().toLowerCase();
+  const existing = new Set(state.skills.map((skill) => skill.toLowerCase()));
+
+  skillAutocomplete.query = query;
+  skillAutocomplete.active = -1;
+  skillAutocomplete.items = query
+    ? SKILL_INDEX.filter((skill) => !existing.has(skill.lower))
+        .map((skill) => ({ skill, rank: rankSkill(skill, query) }))
+        .filter(({ rank }) => rank >= 0)
+        .sort((a, b) => a.rank - b.rank || a.skill.order - b.skill.order)
+        .slice(0, MAX_SKILL_SUGGESTIONS)
+        .map(({ skill }) => skill)
+    : [];
+  renderSkillAutocomplete();
+}
+
+function renderSkillAutocomplete() {
+  const { items, active, query } = skillAutocomplete;
+  const open = items.length > 0;
+
+  elements.skillSuggestList.hidden = !open;
+  elements.skillInput.setAttribute("aria-expanded", String(open));
+  if (active >= 0) {
+    elements.skillInput.setAttribute("aria-activedescendant", `skill-option-${active}`);
+  } else {
+    elements.skillInput.removeAttribute("aria-activedescendant");
+  }
+
+  elements.skillSuggestList.innerHTML = items
+    .map(
+      (skill, index) => `
+        <li id="skill-option-${index}" role="option" data-index="${index}" aria-selected="${index === active}" class="${index === active ? "is-active" : ""}">
+          <span class="suggest-name">${highlightMatch(skill.name, query)}</span>
+          <span class="suggest-category">${escapeHtml(skill.category)}</span>
+        </li>
+      `,
+    )
+    .join("");
+}
+
+function closeSkillAutocomplete() {
+  skillAutocomplete.items = [];
+  skillAutocomplete.active = -1;
+  renderSkillAutocomplete();
+}
+
+function moveSkillSuggestion(step) {
+  const count = skillAutocomplete.items.length;
+  if (!count) return;
+  const { active } = skillAutocomplete;
+  skillAutocomplete.active = step > 0 ? (active + 1) % count : active <= 0 ? count - 1 : active - 1;
+  renderSkillAutocomplete();
+}
+
+function chooseSkillSuggestion(index) {
+  const skill = skillAutocomplete.items[index];
+  if (!skill) return;
+  elements.skillInput.value = "";
+  closeSkillAutocomplete();
+  addSkills([skill.name]);
 }
 
 function skillDisplayName(raw, isLanguage) {
@@ -782,6 +894,7 @@ function renderEntryEditor(section) {
           <div class="entry-card-header">
             <input type="checkbox" data-field="include" ${entry.include ? "checked" : ""} title="Show on resume" aria-label="Show on resume" />
             <button type="button" class="entry-card-title" data-action="toggle" aria-expanded="${!entry.collapsed}"><span class="entry-card-title-text">${escapeHtml(entryCardTitle(section, entry))}</span></button>
+            <span class="entry-grammar" hidden></span>
             <div class="entry-actions">
               <button type="button" class="icon-button" data-action="up" aria-label="Move up" ${index === 0 ? "disabled" : ""}>${ICONS.up}</button>
               <button type="button" class="icon-button" data-action="down" aria-label="Move down" ${index === entries.length - 1 ? "disabled" : ""}>${ICONS.down}</button>
@@ -793,6 +906,8 @@ function renderEntryEditor(section) {
       `;
     })
     .join("");
+
+  list.querySelectorAll("textarea").forEach(renderGrammarHints);
 }
 
 function setupEntrySection(section) {
@@ -1368,6 +1483,273 @@ function resetAll() {
 }
 
 // ---------------------------------------------------------------------------
+// Grammar check
+//
+// Harper (https://writewithharper.com) runs entirely in the browser, in a web
+// worker, so resume text never leaves the device. The engine (~8 MB, cached by
+// the browser) loads lazily from jsDelivr the first time a text area is used.
+//
+// Every text area in the editor is checked line by line, since bullet lists are
+// one item per line and would otherwise read as a single run-on sentence.
+// ---------------------------------------------------------------------------
+
+const HARPER_URL = "https://cdn.jsdelivr.net/npm/harper.js@2.10.0/dist/";
+const GRAMMAR_DELAY_MS = 600;
+const SUGGESTION_KIND = { replace: 0, remove: 1, insertAfter: 2 };
+
+const grammar = {
+  linter: null,
+  loading: null,
+  knownWords: new Set(),
+  // field id -> { text, issues: [{ lint, lineText, lineStart }] }
+  results: new Map(),
+  timers: new Map(),
+};
+
+function isGrammarField(element) {
+  return element instanceof HTMLTextAreaElement && Boolean(element.id) && Boolean(element.closest(".editor"));
+}
+
+function loadGrammarEngine() {
+  grammar.loading ||= (async () => {
+    const [{ WorkerLinter }, { binary }] = await Promise.all([
+      import(`${HARPER_URL}index.js`),
+      import(`${HARPER_URL}binary.js`),
+    ]);
+    const linter = new WorkerLinter({ binary });
+    await linter.setup();
+    grammar.linter = linter;
+    return linter;
+  })().catch((error) => {
+    // Offline or CDN blocked: the editor keeps working without suggestions.
+    console.warn("Grammar check unavailable:", error);
+    return null;
+  });
+  return grammar.loading;
+}
+
+// Names, companies, projects and tech terms from the resume, so they aren't flagged as typos.
+function resumeVocabulary() {
+  const words = new Set();
+  const add = (text) =>
+    String(text || "")
+      .split(/[^\p{L}\p{N}+#'.-]+/u)
+      .map((word) => word.replace(/^[.'-]+|[.'-]+$/g, ""))
+      .filter((word) => word.length > 1)
+      .forEach((word) => words.add(word));
+
+  SKILL_CATALOG.forEach(([name]) => add(name));
+  state.skills.forEach(add);
+  ["fullName", "headline", "location", "githubUsername", "languages"].forEach((field) => add(elements[field].value));
+  Object.values(state.entries)
+    .flat()
+    .forEach((entry) => ["role", "company", "school", "degree", "issuer", "name", "location", "title"].forEach((key) => add(entry[key])));
+  state.projects.forEach((project) => {
+    add(project.name);
+    add(project.tech);
+  });
+  return [...words];
+}
+
+async function teachVocabulary(linter) {
+  const fresh = resumeVocabulary().filter((word) => !grammar.knownWords.has(word));
+  if (fresh.length) {
+    fresh.forEach((word) => grammar.knownWords.add(word));
+    await linter.importWords(fresh);
+  }
+}
+
+// Spelling hints on capitalised words are almost always proper nouns or acronyms on a resume.
+function isUsefulLint(lint) {
+  return !(lint.lint_kind() === "Spelling" && /\p{Lu}/u.test(lint.get_problem_text()));
+}
+
+async function checkGrammar(fieldId) {
+  const linter = await loadGrammarEngine();
+  const field = document.getElementById(fieldId);
+  if (!linter || !field) return;
+
+  const text = field.value;
+  const issues = [];
+  if (text.trim()) {
+    await teachVocabulary(linter);
+    let lineStart = 0;
+    for (const lineText of text.split("\n")) {
+      if (lineText.trim()) {
+        const lints = await linter.lint(lineText, { language: "plaintext" });
+        lints.filter(isUsefulLint).forEach((lint) => issues.push({ lint, lineText, lineStart }));
+      }
+      // Harper spans count Unicode code points, not UTF-16 units.
+      lineStart += Array.from(lineText).length + 1;
+    }
+  }
+
+  // The user kept typing while this ran; the newer check will render.
+  if (document.getElementById(fieldId)?.value !== text) return;
+  grammar.results.set(fieldId, { text, issues });
+  renderGrammarHints(document.getElementById(fieldId));
+}
+
+function scheduleGrammarCheck(fieldId) {
+  clearTimeout(grammar.timers.get(fieldId));
+  grammar.timers.set(fieldId, setTimeout(() => checkGrammar(fieldId), GRAMMAR_DELAY_MS));
+}
+
+function grammarContext(text, start, end) {
+  const chars = Array.from(text);
+  const before = chars.slice(Math.max(0, start - 28), start).join("");
+  const problem = chars.slice(start, end).join("");
+  const after = chars.slice(end, end + 28).join("");
+  const shown = problem.trim() ? escapeHtml(problem) : "␣".repeat(Math.max(1, problem.length));
+  return (
+    (start > 28 ? "…" : "") +
+    escapeHtml(before) +
+    `<mark class="grammar-problem">${shown}</mark>` +
+    escapeHtml(after) +
+    (end + 28 < chars.length ? "…" : "")
+  );
+}
+
+function suggestionLabel(suggestion, problem) {
+  const replacement = suggestion.get_replacement_text();
+  if (suggestion.kind() === SUGGESTION_KIND.remove || !replacement.trim()) {
+    return problem.trim() ? `Remove “${problem.trim()}”` : "Remove space";
+  }
+  if (suggestion.kind() === SUGGESTION_KIND.insertAfter) {
+    return `Add “${replacement}”`;
+  }
+  return replacement;
+}
+
+function renderGrammarHints(field) {
+  if (!isGrammarField(field)) return;
+  const result = grammar.results.get(field.id);
+  const issues = result && result.text === field.value ? result.issues : [];
+  let box = document.getElementById(`grammar-${field.id}`);
+
+  if (!issues.length) {
+    box?.remove();
+  } else {
+    if (!box) {
+      box = document.createElement("div");
+      box.id = `grammar-${field.id}`;
+      box.className = "grammar-hints";
+      box.dataset.field = field.id;
+      box.setAttribute("aria-live", "polite");
+      (field.closest("label") || field).after(box);
+    }
+    box.classList.remove("is-stale");
+    box.innerHTML =
+      `<p class="grammar-title">${plural(issues.length, "writing suggestion")}</p>` +
+      issues
+        .map(({ lint, lineText }, index) => {
+          const { start, end } = lint.span();
+          const problem = lint.get_problem_text();
+          const fixes = lint
+            .suggestions()
+            .slice(0, 3)
+            .map(
+              (suggestion, suggestionIndex) =>
+                `<button type="button" class="grammar-fix" data-issue="${index}" data-suggestion="${suggestionIndex}">${escapeHtml(suggestionLabel(suggestion, problem))}</button>`,
+            )
+            .join("");
+          const message = escapeHtml(lint.message()).replace(/`([^`]+)`/g, "<code>$1</code>");
+          return `
+            <div class="grammar-issue">
+              <p class="grammar-context">${grammarContext(lineText, start, end)}</p>
+              <p class="grammar-message">${message}</p>
+              <div class="grammar-actions">
+                ${fixes}
+                <button type="button" class="grammar-ignore" data-issue="${index}">Ignore</button>
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+  }
+
+  const card = field.closest(".entry-card");
+  if (card) {
+    const total = [...card.querySelectorAll("textarea")].reduce((sum, textarea) => {
+      const cardResult = grammar.results.get(textarea.id);
+      return sum + (cardResult && cardResult.text === textarea.value ? cardResult.issues.length : 0);
+    }, 0);
+    const badge = card.querySelector(".entry-grammar");
+    badge.hidden = !total;
+    badge.textContent = total ? plural(total, "suggestion") : "";
+  }
+}
+
+function applyGrammarFix(fieldId, issueIndex, suggestionIndex) {
+  const field = document.getElementById(fieldId);
+  const result = grammar.results.get(fieldId);
+  const issue = result?.issues[issueIndex];
+  if (!field || !issue || field.value !== result.text) {
+    scheduleGrammarCheck(fieldId);
+    return;
+  }
+
+  const suggestion = issue.lint.suggestions()[suggestionIndex];
+  const { start, end } = issue.lint.span();
+  const from = issue.lineStart + start;
+  const to = issue.lineStart + end;
+  const chars = Array.from(field.value);
+  const replacement = Array.from(suggestion.get_replacement_text());
+
+  if (suggestion.kind() === SUGGESTION_KIND.remove) {
+    chars.splice(from, to - from);
+  } else if (suggestion.kind() === SUGGESTION_KIND.insertAfter) {
+    chars.splice(to, 0, ...replacement);
+  } else {
+    chars.splice(from, to - from, ...replacement);
+  }
+
+  field.value = chars.join("");
+  // Runs the normal input handling: state, preview, autosave and a fresh check.
+  field.dispatchEvent(new Event("input", { bubbles: true }));
+  clearTimeout(grammar.timers.get(fieldId));
+  checkGrammar(fieldId);
+}
+
+async function ignoreGrammarIssue(fieldId, issueIndex) {
+  const issue = grammar.results.get(fieldId)?.issues[issueIndex];
+  if (!issue || !grammar.linter) return;
+  await grammar.linter.ignoreLint(issue.lineText, issue.lint);
+  checkGrammar(fieldId);
+}
+
+function setupGrammarCheck() {
+  const editor = document.querySelector(".editor");
+
+  editor.addEventListener("input", (event) => {
+    if (!isGrammarField(event.target)) return;
+    document.getElementById(`grammar-${event.target.id}`)?.classList.add("is-stale");
+    scheduleGrammarCheck(event.target.id);
+  });
+  // Start downloading the engine as soon as someone heads for a text area.
+  editor.addEventListener("focusin", (event) => {
+    if (isGrammarField(event.target)) loadGrammarEngine();
+  });
+  editor.addEventListener("click", (event) => {
+    const button = event.target.closest(".grammar-fix, .grammar-ignore");
+    const fieldId = button?.closest(".grammar-hints")?.dataset.field;
+    if (!fieldId) return;
+    const issueIndex = Number(button.dataset.issue);
+    if (button.classList.contains("grammar-fix")) {
+      applyGrammarFix(fieldId, issueIndex, Number(button.dataset.suggestion));
+    } else {
+      ignoreGrammarIssue(fieldId, issueIndex);
+    }
+  });
+
+  // Returning users already have text: check it once the page has settled.
+  const filled = [...editor.querySelectorAll("textarea")].filter((textarea) => textarea.value.trim());
+  if (filled.length) {
+    setTimeout(() => filled.forEach((textarea) => checkGrammar(textarea.id)), 1500);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Elastic overscroll: pulling past the top or bottom stretches the content,
 // then a spring pulls it back. Native bounce is turned off in CSS so every
 // browser behaves the same.
@@ -1528,9 +1910,25 @@ function setupOverscrollEffects() {
 PROFILE_FIELDS.forEach((field) => elements[field].addEventListener("input", updatePreview));
 
 elements.skillInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter" || event.key === ",") {
+  if (event.isComposing) return;
+  const { items, active } = skillAutocomplete;
+
+  if ((event.key === "ArrowDown" || event.key === "ArrowUp") && items.length) {
+    event.preventDefault();
+    moveSkillSuggestion(event.key === "ArrowDown" ? 1 : -1);
+  } else if (event.key === "Enter") {
+    event.preventDefault();
+    // A highlighted suggestion wins; otherwise add exactly what was typed.
+    if (active >= 0) chooseSkillSuggestion(active);
+    else commitSkillInput();
+  } else if (event.key === "Tab" && active >= 0) {
+    chooseSkillSuggestion(active);
+  } else if (event.key === ",") {
     event.preventDefault();
     commitSkillInput();
+  } else if (event.key === "Escape" && items.length) {
+    event.preventDefault();
+    closeSkillAutocomplete();
   } else if (event.key === "Backspace" && !elements.skillInput.value && state.skills.length) {
     removeSkill(state.skills.length - 1);
   }
@@ -1541,10 +1939,25 @@ elements.skillInput.addEventListener("input", () => {
   if (value.includes(",")) {
     const parts = value.split(",");
     elements.skillInput.value = parts.pop().trimStart();
-    addSkills(parts);
+    addSkills(parts.map(canonicalSkill));
+  }
+  updateSkillAutocomplete();
+});
+elements.skillInput.addEventListener("focus", updateSkillAutocomplete);
+elements.skillInput.addEventListener("blur", commitSkillInput);
+// mousedown (not click) so the input keeps focus and blur doesn't commit the half-typed text first.
+elements.skillSuggestList.addEventListener("mousedown", (event) => {
+  event.preventDefault();
+  const option = event.target.closest("[data-index]");
+  if (option) chooseSkillSuggestion(Number(option.dataset.index));
+});
+elements.skillSuggestList.addEventListener("mousemove", (event) => {
+  const index = Number(event.target.closest("[data-index]")?.dataset.index ?? -1);
+  if (index >= 0 && index !== skillAutocomplete.active) {
+    skillAutocomplete.active = index;
+    renderSkillAutocomplete();
   }
 });
-elements.skillInput.addEventListener("blur", commitSkillInput);
 elements.skillEditor.addEventListener("click", (event) => {
   const removeButton = event.target.closest("[data-remove-skill]");
   if (removeButton) {
@@ -1689,4 +2102,5 @@ elements.printResumeButton.addEventListener("click", () => window.print());
 loadSaved();
 renderAll();
 setupOverscrollEffects();
+setupGrammarCheck();
 loadGithubProjects();

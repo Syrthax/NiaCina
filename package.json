@@ -4,7 +4,7 @@
   "description": "Resume builder that pulls in your GitHub projects",
   "scripts": {
     "start": "python3 serve.py 4173",
-    "build": "rm -rf dist && mkdir dist && cp index.html script.js styles.css logo.svg dist/",
+    "build": "rm -rf dist && mkdir dist && cp index.html skills.js script.js styles.css logo.svg favicon.ico apple-touch-icon.png dist/",
     "deploy": "npm run build && wrangler pages deploy dist --project-name hiresume --branch main",
     "test": "echo \"No automated tests configured\""
   },
