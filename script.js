@@ -123,7 +123,7 @@ function updatePreview() {
       const techStack = project.tech ? `<p><strong>Tech:</strong> ${escapeHtml(project.tech)}</p>` : "";
       const safeUrl = normaliseUrl(project.url);
       const link = safeUrl
-        ? `<p><strong>Link:</strong> <a href="${escapeHtml(safeUrl)}" target="_blank" rel="noreferrer">${escapeHtml(safeUrl)}</a></p>`
+        ? `<p><strong>Link:</strong> <a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(safeUrl)}</a></p>`
         : "";
 
       return `
@@ -234,13 +234,12 @@ async function loadGithubProjects() {
     mergeProjects(projects);
     elements.projectStatus.textContent = `Loaded ${projects.length} GitHub project${projects.length === 1 ? "" : "s"} from @${username}.`;
   } catch (error) {
-    mergeProjects(
-      bundledGithubProjects.map((project) => ({
-        ...project,
-      })),
-    );
-    elements.projectStatus.textContent =
-      "Live GitHub loading is unavailable right now, so the page is showing the bundled project list for @Syrthax. You can still add and select future projects manually.";
+    if (username.toLowerCase() === "syrthax") {
+      elements.projectStatus.textContent =
+        "Live GitHub loading is unavailable right now, so the page is showing the bundled project list for @Syrthax. You can still add and select future projects manually.";
+    } else {
+      elements.projectStatus.textContent = `Unable to load GitHub projects for @${username}. Keeping the current project list in place.`;
+    }
   } finally {
     elements.loadProjectsButton.disabled = false;
   }
@@ -285,6 +284,7 @@ function addFutureProject(event) {
 
 elements.loadProjectsButton.addEventListener("click", loadGithubProjects);
 elements.futureProjectForm.addEventListener("submit", addFutureProject);
+window.addEventListener("afterprint", () => elements.fullName.focus());
 elements.printResumeButton.addEventListener("click", () => window.print());
 
 updatePreview();
