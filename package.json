@@ -1,7 +1,7 @@
 {
   "name": "niacina",
   "version": "1.0.0",
-  "description": "A resume project selector so that you dont need to type new resume everytime for different project showcase",
+  "description": "A resume project selector so you do not need to build a new resume each time for different project showcases.",
   "scripts": {
     "start": "python3 -m http.server 4173",
     "test": "echo \"No automated tests configured\""

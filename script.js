@@ -71,6 +71,8 @@ const bundledGithubProjects = [
 const state = {
   projects: [...bundledGithubProjects],
   latestProjectRequestId: 0,
+  projectRequestController: null,
+  manualProjectCounter: 0,
 };
 
 function escapeHtml(value) {
@@ -201,7 +203,10 @@ function mergeProjects(newProjects) {
 async function loadGithubProjects() {
   const username = elements.githubUsername.value.trim() || "Syrthax";
   const requestId = state.latestProjectRequestId + 1;
+  const controller = new AbortController();
   state.latestProjectRequestId = requestId;
+  state.projectRequestController?.abort();
+  state.projectRequestController = controller;
   elements.projectStatus.textContent = `Loading projects from @${username}...`;
   elements.projectChecklist.setAttribute("aria-busy", "true");
   elements.loadProjectsButton.disabled = true;
@@ -211,9 +216,17 @@ async function loadGithubProjects() {
     let page = 1;
 
     while (true) {
-      const response = await fetch(
-        `https://api.github.com/users/${encodeURIComponent(username)}/repos?per_page=100&sort=updated&page=${page}`,
-      );
+      const timeoutId = window.setTimeout(() => controller.abort(), 8000);
+      let response;
+
+      try {
+        response = await fetch(
+          `https://api.github.com/users/${encodeURIComponent(username)}/repos?per_page=100&sort=updated&page=${page}`,
+          { signal: controller.signal },
+        );
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
 
       if (!response.ok) {
         throw new Error(`GitHub returned ${response.status}`);
@@ -252,7 +265,9 @@ async function loadGithubProjects() {
       return;
     }
 
-    if (username.toLowerCase() === "syrthax") {
+    if (error.name === "AbortError") {
+      elements.projectStatus.textContent = `Stopped loading GitHub projects for @${username}.`;
+    } else if (username.toLowerCase() === "syrthax") {
       elements.projectStatus.textContent =
         "Live GitHub loading is unavailable right now, so the page is showing the bundled project list for @Syrthax. You can still add and select future projects manually.";
     } else {
@@ -260,6 +275,7 @@ async function loadGithubProjects() {
     }
   } finally {
     if (requestId === state.latestProjectRequestId) {
+      state.projectRequestController = null;
       elements.projectChecklist.setAttribute("aria-busy", "false");
       elements.loadProjectsButton.disabled = false;
     }
@@ -279,7 +295,7 @@ function addFutureProject(event) {
   }
 
   state.projects.push({
-    id: `manual-${Date.now()}`,
+    id: `manual-${Date.now()}-${state.manualProjectCounter}`,
     name: projectName,
     description: projectDescription || "Future project ready for resume inclusion.",
     tech: projectTech || "To be decided",
@@ -287,6 +303,7 @@ function addFutureProject(event) {
     selected: true,
     source: "manual",
   });
+  state.manualProjectCounter += 1;
 
   elements.projectStatus.textContent = "Future project added. Adjust the checkbox list to control what appears in the resume.";
   elements.futureProjectForm.reset();

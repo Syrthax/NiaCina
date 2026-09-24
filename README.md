@@ -1,5 +1,5 @@
 # NiaCina
-A resume project selector so that you dont need to type new resume everytime for different project showcase
+A resume project selector so you do not need to create a new resume every time you want to showcase different projects.
 
 ## Run locally
 
