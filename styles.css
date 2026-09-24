@@ -377,7 +377,52 @@ textarea {
   padding: 1.5rem;
 }
 
+.template-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  border: none;
+}
+
+.template-picker legend {
+  float: left;
+  margin-right: 0.5rem;
+  font-weight: 700;
+}
+
+.template-picker label {
+  display: inline-flex;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.template-picker input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.template-picker label:has(input:checked) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.template-picker label:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .resume-preview {
+  display: flex;
+  flex-direction: column;
   min-height: 100%;
   background: linear-gradient(180deg, #ffffff 0%, #fbfbff 100%);
   border: 1px solid var(--panel-border);
@@ -429,6 +474,183 @@ textarea {
   border-radius: 16px;
 }
 
+/* Single-column templates flatten the main/side wrappers and order sections explicitly. */
+.resume-main,
+.resume-side {
+  display: contents;
+}
+
+#previewSummarySection { order: 1; }
+#previewExperienceSection { order: 2; }
+#previewProjectsSection { order: 3; }
+#previewEducationSection { order: 4; }
+#previewSkillsSection { order: 5; }
+#previewCertificationsSection { order: 6; }
+#previewAchievementsSection { order: 7; }
+#previewLanguagesSection { order: 8; }
+
+/* Classic: serif, black on white, ruled headings, plain-text skills. ATS friendly. */
+.template-classic {
+  --muted: #333;
+  font-family: Georgia, "Times New Roman", serif;
+  color: #111;
+  background: #fff;
+}
+
+.template-classic .resume-header {
+  text-align: center;
+  border-bottom: 1px solid #111;
+}
+
+.template-classic .contact-line {
+  justify-content: center;
+}
+
+.template-classic .resume-section h2 {
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding-bottom: 0.25rem;
+  margin-bottom: 0.65rem;
+  border-bottom: 1px solid #111;
+}
+
+.template-classic .pill-list {
+  gap: 0 0.35rem;
+}
+
+.template-classic .pill-list li {
+  padding: 0;
+  background: none;
+  color: inherit;
+  font-weight: 400;
+}
+
+.template-classic .pill-list li:not(:last-child)::after {
+  content: ",";
+}
+
+.template-classic .resume-project {
+  border: none;
+  padding: 0;
+}
+
+/* Compact: dense spacing and small type to fit more on one page. */
+.template-compact {
+  font-size: 0.88rem;
+  background: #fff;
+}
+
+.template-compact .resume-header {
+  padding-bottom: 0.75rem;
+}
+
+.template-compact .resume-header h1 {
+  font-size: 1.6rem;
+  margin-bottom: 0.1rem;
+}
+
+.template-compact .resume-header p {
+  margin: 0 0 0.35rem;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.template-compact .contact-line {
+  gap: 0.6rem;
+  font-size: 0.85rem;
+}
+
+.template-compact .resume-section {
+  padding-top: 0.85rem;
+}
+
+.template-compact .resume-section h2 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin-bottom: 0.4rem;
+}
+
+.template-compact .entry-preview h3,
+.template-compact .resume-project h3 {
+  font-size: 0.95rem;
+}
+
+.template-compact .entry-preview-list,
+.template-compact .project-preview-list {
+  gap: 0.6rem;
+}
+
+.template-compact .resume-project {
+  border: none;
+  padding: 0;
+}
+
+.template-compact .project-item p,
+.template-compact .resume-project p,
+.template-compact .entry-text,
+.template-compact .bullets {
+  margin-top: 0.15rem;
+  line-height: 1.4;
+}
+
+.template-compact .pill-list {
+  gap: 0.35rem;
+}
+
+.template-compact .pill-list li {
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* Sidebar: two columns, secondary details in a tinted side panel. */
+.template-sidebar {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  align-items: start;
+  align-content: start;
+  column-gap: 1.75rem;
+  background: #fff;
+}
+
+.template-sidebar .resume-header {
+  grid-column: 1 / -1;
+}
+
+.template-sidebar .resume-main,
+.template-sidebar .resume-side {
+  display: block;
+}
+
+.template-sidebar .resume-side {
+  margin-top: 1.5rem;
+  padding: 0 1rem 1rem;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.template-sidebar .resume-side .resume-section h2 {
+  font-size: 1.05rem;
+}
+
+.template-sidebar .resume-side .pill-list li {
+  background: #fff;
+}
+
+.template-sidebar .resume-side .entry-preview-head {
+  display: block;
+}
+
+.template-sidebar .resume-side .entry-date {
+  display: block;
+  margin-top: 0.15rem;
+}
+
 .empty-state {
   margin: 0;
   padding: 1rem;
@@ -466,6 +688,10 @@ textarea {
   .resume-preview {
     padding: 1.5rem;
   }
+
+  .template-sidebar {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media print {
@@ -474,7 +700,8 @@ textarea {
   }
 
   .hero,
-  .form-panel {
+  .form-panel,
+  .template-picker {
     display: none !important;
   }
 

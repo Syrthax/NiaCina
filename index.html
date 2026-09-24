@@ -167,52 +167,64 @@
       </section>
 
       <section class="panel preview-panel">
-        <div id="resumePreview" class="resume-preview">
+        <fieldset id="templatePicker" class="template-picker">
+          <legend>Template</legend>
+          <label><input type="radio" name="template" value="modern" checked /> Modern</label>
+          <label><input type="radio" name="template" value="classic" /> Classic</label>
+          <label><input type="radio" name="template" value="compact" /> Compact</label>
+          <label><input type="radio" name="template" value="sidebar" /> Sidebar</label>
+        </fieldset>
+
+        <div id="resumePreview" class="resume-preview template-modern">
           <header class="resume-header">
             <h1 id="previewFullName">Your Name</h1>
             <p id="previewHeadline">Frontend Developer</p>
             <div id="previewContact" class="contact-line"></div>
           </header>
 
-          <section class="resume-section" id="previewSummarySection">
-            <h2>Profile</h2>
-            <p id="previewSummary"></p>
-          </section>
+          <div class="resume-main">
+            <section class="resume-section" id="previewSummarySection">
+              <h2>Profile</h2>
+              <p id="previewSummary"></p>
+            </section>
 
-          <section class="resume-section" id="previewExperienceSection">
-            <h2>Experience</h2>
-            <div id="previewExperience" class="entry-preview-list"></div>
-          </section>
+            <section class="resume-section" id="previewExperienceSection">
+              <h2>Experience</h2>
+              <div id="previewExperience" class="entry-preview-list"></div>
+            </section>
 
-          <section class="resume-section">
-            <h2>Selected Projects</h2>
-            <div id="previewProjects" class="project-preview-list"></div>
-          </section>
+            <section class="resume-section" id="previewProjectsSection">
+              <h2>Selected Projects</h2>
+              <div id="previewProjects" class="project-preview-list"></div>
+            </section>
 
-          <section class="resume-section" id="previewEducationSection">
-            <h2>Education</h2>
-            <div id="previewEducation" class="entry-preview-list"></div>
-          </section>
+            <section class="resume-section" id="previewAchievementsSection">
+              <h2>Achievements &amp; Awards</h2>
+              <div id="previewAchievements" class="entry-preview-list"></div>
+            </section>
+          </div>
 
-          <section class="resume-section" id="previewSkillsSection">
-            <h2>Skills</h2>
-            <ul id="previewSkills" class="pill-list"></ul>
-          </section>
+          <aside class="resume-side">
+            <section class="resume-section" id="previewEducationSection">
+              <h2>Education</h2>
+              <div id="previewEducation" class="entry-preview-list"></div>
+            </section>
 
-          <section class="resume-section" id="previewCertificationsSection">
-            <h2>Certifications</h2>
-            <div id="previewCertifications" class="entry-preview-list"></div>
-          </section>
+            <section class="resume-section" id="previewSkillsSection">
+              <h2>Skills</h2>
+              <ul id="previewSkills" class="pill-list"></ul>
+            </section>
 
-          <section class="resume-section" id="previewAchievementsSection">
-            <h2>Achievements &amp; Awards</h2>
-            <div id="previewAchievements" class="entry-preview-list"></div>
-          </section>
+            <section class="resume-section" id="previewCertificationsSection">
+              <h2>Certifications</h2>
+              <div id="previewCertifications" class="entry-preview-list"></div>
+            </section>
 
-          <section class="resume-section" id="previewLanguagesSection">
-            <h2>Languages</h2>
-            <p id="previewLanguages"></p>
-          </section>
+            <section class="resume-section" id="previewLanguagesSection">
+              <h2>Languages</h2>
+              <p id="previewLanguages"></p>
+            </section>
+          </aside>
         </div>
       </section>
     </main>

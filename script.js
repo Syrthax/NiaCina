@@ -1,5 +1,7 @@
 const STORAGE_KEY = "niacina:resume:v1";
 
+const TEMPLATES = ["modern", "classic", "compact", "sidebar"];
+
 const PROFILE_FIELDS = [
   "fullName",
   "headline",
@@ -35,6 +37,8 @@ const elements = {
   importInput: document.querySelector("#importInput"),
   resetButton: document.querySelector("#resetButton"),
   saveStatus: document.querySelector("#saveStatus"),
+  templatePicker: document.querySelector("#templatePicker"),
+  resumePreview: document.querySelector("#resumePreview"),
 };
 
 const bundledGithubProjects = [
@@ -196,6 +200,7 @@ const SAMPLE_ENTRIES = {
 };
 
 const state = {
+  template: TEMPLATES[0],
   projects: [...bundledGithubProjects],
   entries: Object.fromEntries(
     Object.keys(ENTRY_SECTIONS).map((section) => [section, SAMPLE_ENTRIES[section].map(createEntry)]),
@@ -471,6 +476,12 @@ function setupEntrySection(section) {
   });
 }
 
+function applyTemplate(template) {
+  state.template = TEMPLATES.includes(template) ? template : TEMPLATES[0];
+  TEMPLATES.forEach((name) => elements.resumePreview.classList.toggle(`template-${name}`, name === state.template));
+  elements.templatePicker.querySelector(`input[value="${state.template}"]`).checked = true;
+}
+
 function renderProjectChecklist() {
   if (!state.projects.length) {
     elements.projectChecklist.innerHTML =
@@ -605,6 +616,7 @@ function addFutureProject(event) {
 function snapshot() {
   return {
     version: 1,
+    template: state.template,
     profile: Object.fromEntries(PROFILE_FIELDS.map((field) => [field, elements[field].value])),
     entries: state.entries,
     manualProjects: state.projects.filter((project) => project.source === "manual"),
@@ -617,6 +629,10 @@ function snapshot() {
 function applySnapshot(data) {
   if (!data || typeof data !== "object") {
     throw new Error("Invalid resume data");
+  }
+
+  if (typeof data.template === "string") {
+    state.template = data.template;
   }
 
   PROFILE_FIELDS.forEach((field) => {
@@ -683,6 +699,7 @@ function loadSaved() {
 }
 
 function renderAll() {
+  applyTemplate(state.template);
   Object.keys(ENTRY_SECTIONS).forEach(renderEntryEditor);
   renderProjectChecklist();
 }
@@ -747,6 +764,11 @@ elements.projectChecklist.addEventListener("click", (event) => {
 });
 
 Object.keys(ENTRY_SECTIONS).forEach(setupEntrySection);
+
+elements.templatePicker.addEventListener("change", (event) => {
+  applyTemplate(event.target.value);
+  scheduleSave();
+});
 
 elements.loadProjectsButton.addEventListener("click", loadGithubProjects);
 elements.futureProjectForm.addEventListener("submit", addFutureProject);

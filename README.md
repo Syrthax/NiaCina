@@ -15,4 +15,5 @@ Then open `http://localhost:4173` in your browser.
 - Experience, Education, Certifications and Achievements sections: add, reorder, remove, or untick an entry to leave it off one version of the resume
 - Pick GitHub repos to showcase, plus manually added projects
 - Autosaves in your browser; Export/Import JSON to back up or switch between resume versions
+- Four templates (Modern, Classic, Compact, Sidebar), switchable from the preview
 - Print / Save as PDF; empty sections are left out
