@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NiaCina Resume Builder</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div>
+        <p class="eyebrow">NiaCina</p>
+        <h1>Build a project-focused resume in minutes</h1>
+        <p class="subtitle">
+          Fill in your details on the left, preview your resume on the right, and choose which GitHub projects should appear.
+        </p>
+      </div>
+      <button id="printResumeButton" type="button">Print / Save PDF</button>
+    </header>
+
+    <main class="layout">
+      <section class="panel form-panel">
+        <form id="resumeForm">
+          <div class="section-heading">
+            <h2>Resume details</h2>
+            <p>All fields update the preview instantly.</p>
+          </div>
+
+          <div class="form-grid">
+            <label>
+              Full name
+              <input id="fullName" name="fullName" type="text" value="Your Name" />
+            </label>
+            <label>
+              Professional title
+              <input id="headline" name="headline" type="text" value="Frontend Developer" />
+            </label>
+            <label>
+              Email
+              <input id="email" name="email" type="email" value="you@example.com" />
+            </label>
+            <label>
+              Phone
+              <input id="phone" name="phone" type="text" value="+00 123 456 7890" />
+            </label>
+            <label>
+              Location
+              <input id="location" name="location" type="text" value="Remote" />
+            </label>
+            <label>
+              GitHub username
+              <div class="inline-field">
+                <input id="githubUsername" name="githubUsername" type="text" value="Syrthax" />
+                <button id="loadProjectsButton" type="button">Load projects</button>
+              </div>
+            </label>
+          </div>
+
+          <label>
+            Professional summary
+            <textarea id="summary" name="summary" rows="4">Write a short summary that highlights your strengths, preferred technologies, and the value you bring to a team.</textarea>
+          </label>
+
+          <label>
+            Skills
+            <textarea id="skills" name="skills" rows="3">JavaScript, TypeScript, React, HTML, CSS, Node.js</textarea>
+          </label>
+        </form>
+
+        <section class="project-controls">
+          <div class="section-heading">
+            <h2>Projects to showcase</h2>
+            <p>Check the projects that should appear on your resume.</p>
+          </div>
+
+          <p id="projectStatus" class="status">Loading GitHub projects...</p>
+          <div id="projectChecklist" class="project-checklist" aria-live="polite"></div>
+        </section>
+
+        <section class="future-projects">
+          <div class="section-heading">
+            <h2>Add future projects</h2>
+            <p>Save upcoming or private work and include it in the resume whenever you need it.</p>
+          </div>
+
+          <form id="futureProjectForm" class="future-project-form">
+            <label>
+              Project name
+              <input id="futureProjectName" name="futureProjectName" type="text" placeholder="AI Resume Assistant" />
+            </label>
+            <label>
+              Technologies
+              <input id="futureProjectTech" name="futureProjectTech" type="text" placeholder="React, Node.js, OpenAI API" />
+            </label>
+            <label>
+              Link
+              <input id="futureProjectLink" name="futureProjectLink" type="url" placeholder="https://example.com/project" />
+            </label>
+            <label>
+              Description
+              <textarea id="futureProjectDescription" name="futureProjectDescription" rows="3" placeholder="Explain what the project solves and what you contributed."></textarea>
+            </label>
+            <button type="submit">Add future project</button>
+          </form>
+        </section>
+      </section>
+
+      <section class="panel preview-panel">
+        <div id="resumePreview" class="resume-preview">
+          <header class="resume-header">
+            <h1 id="previewFullName">Your Name</h1>
+            <p id="previewHeadline">Frontend Developer</p>
+            <div class="contact-line">
+              <span id="previewEmail">you@example.com</span>
+              <span id="previewPhone">+00 123 456 7890</span>
+              <span id="previewLocation">Remote</span>
+            </div>
+          </header>
+
+          <section class="resume-section">
+            <h2>Profile</h2>
+            <p id="previewSummary">
+              Write a short summary that highlights your strengths, preferred technologies, and the value you bring to a team.
+            </p>
+          </section>
+
+          <section class="resume-section">
+            <h2>Skills</h2>
+            <ul id="previewSkills" class="pill-list"></ul>
+          </section>
+
+          <section class="resume-section">
+            <h2>Selected Projects</h2>
+            <div id="previewProjects" class="project-preview-list"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="./script.js"></script>
+  </body>
+</html>

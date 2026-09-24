@@ -1,0 +1,16 @@
+{
+  "name": "niacina",
+  "version": "1.0.0",
+  "description": "A resume project selector so that you dont need to type new resume everytime for different project showcase",
+  "scripts": {
+    "start": "python3 -m http.server 4173",
+    "test": "echo \"No automated tests configured\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://localhost:26831/Syrthax/NiaCina"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
