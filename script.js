@@ -138,6 +138,15 @@ const elements = {
       "skillChips",
       "skillInput",
       "skillSuggestList",
+      "linkedinDialog",
+      "linkedinSummary",
+      "linkedinPick",
+      "linkedinDrop",
+      "linkedinFile",
+      "linkedinError",
+      "linkedinReview",
+      "linkedinBack",
+      "linkedinImportButton",
       "skillEditor",
       "skillsCount",
       "importSkillsButton",
@@ -1403,13 +1412,20 @@ function applySnapshot(data, { dropLegacyDefaults = false } = {}) {
 }
 
 let saveTimer;
+let statusHeldUntil = 0;
+
+// Shows a message in the top bar that the routine "Saved" won't overwrite for a few seconds.
+function flashStatus(message) {
+  elements.saveStatus.textContent = message;
+  statusHeldUntil = Date.now() + 4000;
+}
 
 function scheduleSave() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot()));
-      elements.saveStatus.textContent = "Saved";
+      if (Date.now() > statusHeldUntil) elements.saveStatus.textContent = "Saved";
     } catch (error) {
       elements.saveStatus.textContent = "Autosave unavailable. Use Export to keep a copy.";
     }
@@ -1480,6 +1496,452 @@ function resetAll() {
     // Nothing stored or storage blocked; the reload still restores defaults.
   }
   window.location.reload();
+}
+
+// ---------------------------------------------------------------------------
+// LinkedIn import
+//
+// LinkedIn's API doesn't share positions or certifications with regular apps,
+// so this reads the member's own data export instead (Settings -> Data privacy
+// -> Get a copy of your data). The ZIP of CSV files is unpacked in the browser
+// with fflate; nothing is uploaded. Column names have shifted between export
+// versions, so every field accepts a few spellings.
+// ---------------------------------------------------------------------------
+
+const FFLATE_URL = "https://cdn.jsdelivr.net/npm/fflate@0.8.3/esm/browser.js";
+
+const LINKEDIN_GROUPS = [
+  ["profile", "Profile"],
+  ["experience", "Experience"],
+  ["education", "Education"],
+  ["certifications", "Certifications"],
+  ["achievements", "Honors & awards"],
+  ["projects", "Projects"],
+  ["skills", "Skills"],
+  ["languages", "Languages"],
+];
+
+const LANGUAGE_LEVELS = {
+  "native or bilingual proficiency": "Native",
+  "full professional proficiency": "Fluent",
+  "professional working proficiency": "Professional",
+  "limited working proficiency": "Limited",
+  "elementary proficiency": "Elementary",
+};
+
+const linkedinImport = { items: [] };
+
+// RFC 4180 CSV: quoted fields may contain commas, quotes ("") and newlines.
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let quoted = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    if (quoted) {
+      if (char === '"' && text[i + 1] === '"') {
+        field += '"';
+        i += 1;
+      } else if (char === '"') {
+        quoted = false;
+      } else {
+        field += char;
+      }
+    } else if (char === '"') {
+      quoted = true;
+    } else if (char === ",") {
+      row.push(field);
+      field = "";
+    } else if (char === "\n" || char === "\r") {
+      if (char === "\r" && text[i + 1] === "\n") i += 1;
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+    } else {
+      field += char;
+    }
+  }
+  if (field || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows;
+}
+
+function normaliseHeader(value) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+// Rows as objects keyed by normalised header. Some exports put a few "Notes:"
+// lines above the real header, so the header is found by a column it must have.
+function csvRecords(text, requiredColumn) {
+  const rows = parseCsv(text.replace(/^\uFEFF/, ""));
+  const headerIndex = rows.findIndex((row) => row.some((cell) => normaliseHeader(cell) === requiredColumn));
+  if (headerIndex < 0) return [];
+  const header = rows[headerIndex].map(normaliseHeader);
+  return rows
+    .slice(headerIndex + 1)
+    .filter((row) => row.some((cell) => cell.trim()))
+    .map((row) => Object.fromEntries(header.map((name, index) => [name, (row[index] ?? "").trim()])));
+}
+
+const pick = (record, ...names) => names.map((name) => record?.[name]).find(Boolean) || "";
+
+function cleanMultiline(value) {
+  return String(value || "")
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join("\n");
+}
+
+function csvBaseName(path) {
+  return path
+    .split("/")
+    .pop()
+    .replace(/\.csv$/i, "")
+    .toLowerCase()
+    .replace(/[_\s]+/g, " ")
+    .trim();
+}
+
+async function readLinkedInFiles(files) {
+  const texts = new Map();
+  for (const file of files) {
+    if (/\.zip$/i.test(file.name) || /zip/.test(file.type)) {
+      const { unzipSync } = await import(FFLATE_URL);
+      const entries = unzipSync(new Uint8Array(await file.arrayBuffer()), {
+        filter: (entry) => /\.csv$/i.test(entry.name),
+      });
+      Object.entries(entries).forEach(([path, bytes]) => texts.set(csvBaseName(path), new TextDecoder().decode(bytes)));
+    } else if (/\.csv$/i.test(file.name)) {
+      texts.set(csvBaseName(file.name), await file.text());
+    }
+  }
+  return texts;
+}
+
+const sameText = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+
+function buildLinkedInItems(texts) {
+  const records = (name, requiredColumn) => (texts.has(name) ? csvRecords(texts.get(name), requiredColumn) : []);
+  const items = [];
+  const add = (group, label, detail, data, duplicate = false, checked = !duplicate) =>
+    items.push({ id: `li-${items.length}`, group, label, detail, data, duplicate, checked });
+
+  // Profile fields fill empty inputs; ones that would overwrite start unticked.
+  const profile = records("profile", "first name")[0];
+  const emails = records("email addresses", "email address");
+  const primaryEmail = pick(emails.find((row) => /yes|true/i.test(row.primary)) || emails[0], "email address");
+  const phone = pick(records("phonenumbers", "number")[0] || records("phone numbers", "number")[0], "number");
+  const website = (pick(profile, "websites").match(/https?:\/\/[^\s,\]]+/) || [""])[0];
+  const profileFields = [
+    ["fullName", "Name", [pick(profile, "first name"), pick(profile, "last name")].filter(Boolean).join(" ")],
+    ["headline", "Headline", pick(profile, "headline")],
+    ["summary", "Summary", cleanMultiline(pick(profile, "summary"))],
+    ["location", "Location", pick(profile, "geo location", "location")],
+    ["email", "Email", primaryEmail],
+    ["phone", "Phone", phone],
+    ["website", "Website", website],
+  ];
+  profileFields.forEach(([field, label, value]) => {
+    if (!value) return;
+    const current = elements[field].value.trim();
+    const duplicate = sameText(current, value);
+    const detail = current && !duplicate ? `${value} (replaces “${current}”)` : value;
+    add("profile", label, detail, { field, value }, duplicate, !current);
+  });
+
+  const hasEntry = (section, match) => state.entries[section].some((entry) => entryHasContent(section, entry) && match(entry));
+
+  records("positions", "title").forEach((row) => {
+    const entry = {
+      role: pick(row, "title"),
+      company: pick(row, "company name", "company"),
+      location: pick(row, "location"),
+      start: pick(row, "started on", "start date"),
+      end: pick(row, "finished on", "end date"),
+      highlights: cleanMultiline(pick(row, "description")),
+    };
+    if (!entry.role && !entry.company) return;
+    const duplicate = hasEntry("experience", (e) => sameText(e.role, entry.role) && sameText(e.company, entry.company));
+    add("experience", [entry.role, entry.company].filter(Boolean).join(" · "), formatRange(entry.start, entry.end, "Present"), entry, duplicate);
+  });
+
+  records("education", "school name").forEach((row) => {
+    const entry = {
+      school: pick(row, "school name", "school"),
+      degree: [pick(row, "degree name", "degree"), pick(row, "field of study")].filter(Boolean).join(", "),
+      start: pick(row, "start date", "started on"),
+      end: pick(row, "end date", "finished on"),
+      details: cleanMultiline([pick(row, "notes"), pick(row, "activities")].filter(Boolean).join("\n")),
+    };
+    if (!entry.school) return;
+    const duplicate = hasEntry("education", (e) => sameText(e.school, entry.school) && sameText(e.degree, entry.degree));
+    add("education", [entry.degree, entry.school].filter(Boolean).join(" · "), formatRange(entry.start, entry.end), entry, duplicate);
+  });
+
+  records("certifications", "name").forEach((row) => {
+    const entry = {
+      name: pick(row, "name"),
+      issuer: pick(row, "authority", "issuer"),
+      date: pick(row, "started on", "issued on"),
+      url: normaliseUrl(pick(row, "url")),
+    };
+    if (!entry.name) return;
+    const duplicate = hasEntry("certifications", (e) => sameText(e.name, entry.name));
+    add("certifications", entry.name, [entry.issuer, entry.date].filter(Boolean).join(" · "), entry, duplicate);
+  });
+
+  records("honors", "title").forEach((row) => {
+    const entry = {
+      title: pick(row, "title"),
+      date: pick(row, "issued on", "date"),
+      description: cleanMultiline(pick(row, "description")),
+    };
+    if (!entry.title) return;
+    const duplicate = hasEntry("achievements", (e) => sameText(e.title, entry.title));
+    add("achievements", entry.title, entry.date, entry, duplicate);
+  });
+
+  records("projects", "title").forEach((row) => {
+    const project = {
+      name: pick(row, "title"),
+      description: cleanMultiline(pick(row, "description")),
+      url: normaliseUrl(pick(row, "url")),
+    };
+    if (!project.name) return;
+    const duplicate = state.projects.some((existing) => sameText(existing.name, project.name));
+    add("projects", project.name, formatRange(pick(row, "started on"), pick(row, "finished on")), project, duplicate);
+  });
+
+  const existingSkills = new Set(state.skills.map((skill) => skill.toLowerCase()));
+  records("skills", "name").forEach((row) => {
+    const name = canonicalSkill(pick(row, "name"));
+    if (name) add("skills", name, "", { name }, existingSkills.has(name.toLowerCase()));
+  });
+
+  const existingLanguages = normaliseList(elements.languages.value).map((language) => language.toLowerCase());
+  records("languages", "name").forEach((row) => {
+    const name = pick(row, "name");
+    if (!name) return;
+    const level = LANGUAGE_LEVELS[pick(row, "proficiency").toLowerCase()] || pick(row, "proficiency");
+    const label = level ? `${name} (${level})` : name;
+    const duplicate = existingLanguages.some((language) => language.startsWith(name.toLowerCase()));
+    add("languages", label, "", { label }, duplicate);
+  });
+
+  return items;
+}
+
+function resetLinkedInDialog() {
+  linkedinImport.items = [];
+  elements.linkedinFile.value = "";
+  elements.linkedinPick.hidden = false;
+  elements.linkedinReview.hidden = true;
+  elements.linkedinReview.innerHTML = "";
+  elements.linkedinError.hidden = true;
+  elements.linkedinBack.hidden = true;
+  elements.linkedinImportButton.hidden = true;
+  elements.linkedinSummary.textContent =
+    "Bring in experience, education, certifications, skills and more from your LinkedIn data export.";
+}
+
+function showLinkedInError(message) {
+  elements.linkedinError.textContent = message;
+  elements.linkedinError.hidden = false;
+}
+
+async function handleLinkedInFiles(files) {
+  elements.linkedinError.hidden = true;
+  if (!files.length) return;
+
+  let items;
+  try {
+    items = buildLinkedInItems(await readLinkedInFiles(files));
+  } catch (error) {
+    showLinkedInError("That file couldn't be read. Make sure it's the ZIP LinkedIn emailed you (or CSV files from inside it).");
+    return;
+  }
+  if (!items.length) {
+    showLinkedInError(
+      "No profile data found in that file. The export needs Positions.csv, Education.csv, Certifications.csv, Skills.csv or Profile.csv.",
+    );
+    return;
+  }
+
+  linkedinImport.items = items;
+  elements.linkedinPick.hidden = true;
+  elements.linkedinReview.hidden = false;
+  elements.linkedinBack.hidden = false;
+  elements.linkedinImportButton.hidden = false;
+  renderLinkedInReview();
+}
+
+function renderLinkedInReview() {
+  const { items } = linkedinImport;
+  const newCount = items.filter((item) => !item.duplicate).length;
+  elements.linkedinSummary.textContent = `Found ${plural(items.length, "item")} in your export${
+    newCount < items.length ? `, ${newCount} not on your resume yet` : ""
+  }. Untick anything you don't want.`;
+
+  elements.linkedinReview.innerHTML = LINKEDIN_GROUPS.map(([group, title]) => {
+    const groupItems = items.filter((item) => item.group === group);
+    if (!groupItems.length) return "";
+    const chips = group === "skills" || group === "languages";
+    return `
+      <section class="import-group" data-group="${group}">
+        <label class="import-group-head checkbox">
+          <input type="checkbox" data-group-toggle="${group}" />
+          <span class="import-group-title">${escapeHtml(title)}</span>
+          <span class="import-group-count">${groupItems.length}</span>
+        </label>
+        <div class="import-items${chips ? " is-chips" : ""}">
+          ${groupItems
+            .map(
+              (item) => `
+                <label class="import-item${item.duplicate ? " is-duplicate" : ""}">
+                  <input type="checkbox" data-item="${item.id}" ${item.checked ? "checked" : ""} ${item.duplicate ? "disabled" : ""} />
+                  <span class="import-item-body">
+                    <span class="import-item-title">${escapeHtml(item.label)}</span>
+                    ${
+                      item.duplicate
+                        ? '<span class="import-item-detail">Already on your resume</span>'
+                        : item.detail
+                          ? `<span class="import-item-detail">${escapeHtml(item.detail)}</span>`
+                          : ""
+                    }
+                  </span>
+                </label>
+              `,
+            )
+            .join("")}
+        </div>
+      </section>
+    `;
+  }).join("");
+
+  syncLinkedInSelection();
+}
+
+function syncLinkedInSelection() {
+  const { items } = linkedinImport;
+  LINKEDIN_GROUPS.forEach(([group]) => {
+    const toggle = elements.linkedinReview.querySelector(`[data-group-toggle="${group}"]`);
+    if (!toggle) return;
+    const selectable = items.filter((item) => item.group === group && !item.duplicate);
+    const checked = selectable.filter((item) => item.checked).length;
+    toggle.disabled = !selectable.length;
+    toggle.checked = selectable.length > 0 && checked === selectable.length;
+    toggle.indeterminate = checked > 0 && checked < selectable.length;
+  });
+  const count = items.filter((item) => item.checked && !item.duplicate).length;
+  elements.linkedinImportButton.disabled = !count;
+  elements.linkedinImportButton.textContent = count ? `Import ${plural(count, "item")}` : "Import";
+}
+
+function applyLinkedInImport() {
+  const chosen = linkedinImport.items.filter((item) => item.checked && !item.duplicate);
+  const ofGroup = (group) => chosen.filter((item) => item.group === group).map((item) => item.data);
+
+  ofGroup("profile").forEach(({ field, value }) => {
+    elements[field].value = value;
+  });
+
+  ["experience", "education", "certifications", "achievements"].forEach((section) => {
+    const incoming = ofGroup(section);
+    if (!incoming.length) return;
+    // Drop the empty starter card so imported entries don't sit under a blank one.
+    state.entries[section] = state.entries[section].filter((entry) => entryHasContent(section, entry));
+    incoming.forEach((data) => state.entries[section].push(createEntry({ ...data, collapsed: true })));
+  });
+
+  ofGroup("projects").forEach((project, index) => {
+    state.projects.push({
+      id: `manual-${Date.now()}-${index}`,
+      name: project.name,
+      description: project.description,
+      tech: "",
+      url: project.url,
+      private: false,
+      selected: true,
+      source: "manual",
+    });
+  });
+
+  const languages = ofGroup("languages").map((language) => language.label);
+  if (languages.length) {
+    elements.languages.value = [...normaliseList(elements.languages.value), ...languages].join(", ");
+  }
+
+  const skills = ofGroup("skills").map((skill) => skill.name);
+  if (skills.length) {
+    state.skills.push(...skills.filter((skill) => !state.skills.some((existing) => sameText(existing, skill))));
+  }
+
+  Object.keys(ENTRY_SECTIONS).forEach(renderEntryEditor);
+  renderSkills();
+  renderProjects();
+  elements.linkedinDialog.close();
+  flashStatus(`Imported ${plural(chosen.length, "item")} from LinkedIn`);
+
+  // Check the imported text right away.
+  document.querySelectorAll(".editor textarea").forEach((textarea) => {
+    if (textarea.value.trim()) scheduleGrammarCheck(textarea.id);
+  });
+}
+
+function setupLinkedInImport() {
+  document.querySelectorAll("[data-open-linkedin]").forEach((button) =>
+    button.addEventListener("click", () => {
+      resetLinkedInDialog();
+      elements.linkedinDialog.showModal();
+    }),
+  );
+
+  elements.linkedinFile.addEventListener("change", () => handleLinkedInFiles([...elements.linkedinFile.files]));
+
+  ["dragenter", "dragover"].forEach((type) =>
+    elements.linkedinDrop.addEventListener(type, (event) => {
+      event.preventDefault();
+      elements.linkedinDrop.classList.add("is-dragging");
+    }),
+  );
+  ["dragleave", "drop"].forEach((type) =>
+    elements.linkedinDrop.addEventListener(type, () => elements.linkedinDrop.classList.remove("is-dragging")),
+  );
+  elements.linkedinDrop.addEventListener("drop", (event) => {
+    event.preventDefault();
+    handleLinkedInFiles([...event.dataTransfer.files]);
+  });
+
+  elements.linkedinReview.addEventListener("change", (event) => {
+    const { items } = linkedinImport;
+    const group = event.target.dataset.groupToggle;
+    if (group) {
+      items
+        .filter((item) => item.group === group && !item.duplicate)
+        .forEach((item) => {
+          item.checked = event.target.checked;
+        });
+      elements.linkedinReview
+        .querySelectorAll(`[data-group="${group}"] [data-item]:not(:disabled)`)
+        .forEach((input) => {
+          input.checked = event.target.checked;
+        });
+    } else if (event.target.dataset.item) {
+      const item = items.find((entry) => entry.id === event.target.dataset.item);
+      if (item) item.checked = event.target.checked;
+    }
+    syncLinkedInSelection();
+  });
+
+  elements.linkedinBack.addEventListener("click", resetLinkedInDialog);
+  elements.linkedinImportButton.addEventListener("click", applyLinkedInImport);
 }
 
 // ---------------------------------------------------------------------------
@@ -2103,4 +2565,5 @@ loadSaved();
 renderAll();
 setupOverscrollEffects();
 setupGrammarCheck();
+setupLinkedInImport();
 loadGithubProjects();

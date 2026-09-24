@@ -139,7 +139,10 @@
           <div class="card-body">
             <p class="hint">Jobs, internships, freelance or volunteer roles. Write one achievement per line.</p>
             <div class="entry-list"></div>
-            <button type="button" class="add-entry ghost">+ Add experience</button>
+            <div class="button-row">
+              <button type="button" class="add-entry ghost">+ Add experience</button>
+              <button type="button" class="ghost" data-open-linkedin>Import from LinkedIn</button>
+            </div>
           </div>
         </details>
 
@@ -150,7 +153,10 @@
           </summary>
           <div class="card-body">
             <div class="entry-list"></div>
-            <button type="button" class="add-entry ghost">+ Add education</button>
+            <div class="button-row">
+              <button type="button" class="add-entry ghost">+ Add education</button>
+              <button type="button" class="ghost" data-open-linkedin>Import from LinkedIn</button>
+            </div>
           </div>
         </details>
 
@@ -212,7 +218,10 @@
           </summary>
           <div class="card-body">
             <div class="entry-list"></div>
-            <button type="button" class="add-entry ghost">+ Add certification</button>
+            <div class="button-row">
+              <button type="button" class="add-entry ghost">+ Add certification</button>
+              <button type="button" class="ghost" data-open-linkedin>Import from LinkedIn</button>
+            </div>
           </div>
         </details>
 
@@ -396,6 +405,47 @@
         <div class="button-row">
           <button type="button" class="ghost" data-close>Cancel</button>
           <button id="addSkillsButton" type="button">Add selected</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="linkedinDialog" class="modal" aria-labelledby="linkedinDialogTitle">
+      <div class="modal-header">
+        <div>
+          <h2 id="linkedinDialogTitle">Import from LinkedIn</h2>
+          <p id="linkedinSummary" class="hint">Bring in experience, education, certifications, skills and more from your LinkedIn data export.</p>
+        </div>
+        <button type="button" class="icon-button" data-close aria-label="Close"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg></button>
+      </div>
+
+      <div id="linkedinPick" class="modal-body">
+        <ol class="steps">
+          <li>
+            On LinkedIn, open
+            <a href="https://www.linkedin.com/mypreferences/d/download-my-data" target="_blank" rel="noopener noreferrer">Settings → Data privacy → Get a copy of your data</a>.
+          </li>
+          <li>
+            Pick <strong>Want something in particular?</strong> and tick Positions, Education, Certifications, Skills and Profile. Honors,
+            Projects and Languages are optional. Request the archive; it's usually ready in about 10 minutes.
+          </li>
+          <li>Download the ZIP from the email LinkedIn sends you and drop it below.</li>
+        </ol>
+        <label id="linkedinDrop" class="dropzone">
+          <input id="linkedinFile" class="sr-only" type="file" autofocus accept=".zip,.csv,application/zip,text/csv" multiple />
+          <strong>Drop your LinkedIn ZIP here</strong>
+          <span class="hint">or click to choose it. The CSV files from inside the ZIP work too.</span>
+        </label>
+        <p class="hint">The file is read in your browser. Nothing is uploaded.</p>
+        <p id="linkedinError" class="form-error" role="alert" hidden></p>
+      </div>
+
+      <div id="linkedinReview" class="modal-list import-review" hidden></div>
+
+      <div class="modal-footer">
+        <button id="linkedinBack" type="button" class="ghost" hidden>Choose another file</button>
+        <div class="button-row">
+          <button type="button" class="ghost" data-close>Cancel</button>
+          <button id="linkedinImportButton" type="button" hidden>Import</button>
         </div>
       </div>
     </dialog>

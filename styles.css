@@ -1641,6 +1641,174 @@ dialog.modal > .private-warning {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------- LinkedIn import ---------- */
+
+.steps {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.steps li::marker {
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.dropzone {
+  display: grid;
+  justify-items: center;
+  gap: 0.25rem;
+  padding: 1.75rem 1rem;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--panel-tint);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.dropzone strong {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.dropzone:hover,
+.dropzone.is-dragging {
+  border-color: var(--ink);
+  background: var(--subtle);
+}
+
+.dropzone:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.form-error {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  color: var(--danger);
+  font-size: 0.8125rem;
+}
+
+.import-review {
+  gap: 1rem;
+}
+
+.import-group {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.import-group-head {
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.875rem;
+}
+
+.import-group-title {
+  font-weight: 600;
+}
+
+.import-group-count {
+  margin-left: auto;
+  color: var(--faint);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.import-items {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.import-items.is-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding-top: 0.2rem;
+}
+
+.import-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.4rem 0.35rem;
+  border-radius: 4px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.import-item:hover {
+  background: var(--panel-tint);
+}
+
+.import-item input {
+  width: auto;
+  margin: 0.15rem 0 0;
+}
+
+.import-items.is-chips .import-item {
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.import-items.is-chips .import-item input {
+  margin: 0;
+}
+
+.import-items.is-chips .import-item:has(input:checked) {
+  border-color: var(--ink);
+}
+
+.import-item-body {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.import-item-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.import-item-detail {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-items.is-chips .import-item-detail {
+  display: none;
+}
+
+.import-item.is-duplicate {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.import-items.is-chips .import-item.is-duplicate .import-item-title {
+  text-decoration: line-through;
+}
+
+#linkedinDialog {
+  height: min(720px, calc(100vh - 2rem));
+}
+
+#linkedinDialog .modal-body {
+  flex: 1;
+  align-content: start;
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 1100px) {
