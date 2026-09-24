@@ -1,6 +1,104 @@
-const STORAGE_KEY = "niacina:resume:v1";
+const STORAGE_KEY = "hiresume:resume:v1";
+const TOKEN_KEY = "hiresume:github-token";
+// Keys from before the rename to HiResume; data is moved over on first load.
+const LEGACY_STORAGE_KEYS = { [STORAGE_KEY]: "niacina:resume:v1", [TOKEN_KEY]: "niacina:github-token" };
 
 const TEMPLATES = ["modern", "classic", "compact", "sidebar"];
+const DEFAULT_ACCENT = "#1e3a8a";
+const LEGACY_DEFAULT_ACCENT = "#4f46e5";
+
+const ICONS = {
+  x: '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg>',
+  up: '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M4 7l4-4 4 4" /></svg>',
+  down: '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M4 9l4 4 4-4" /></svg>',
+  left: '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5L5.5 8l4.5 4.5" /></svg>',
+  right: '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" /></svg>',
+  lock: '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="7" width="9" height="6.5" rx="1" /><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" /></svg>',
+  alert: '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l6 10.5H2z" /><path d="M8 7v2.5M8 11.2v.1" /></svg>',
+};
+const PROJECTS_PER_PAGE = 8;
+const SKILLS_PER_PAGE = 30;
+
+// GitHub languages and topics mapped to how they should read on a resume.
+// Topics listed here are treated as skills; other topics are offered but unticked.
+const SKILL_NAMES = {
+  javascript: "JavaScript",
+  typescript: "TypeScript",
+  python: "Python",
+  java: "Java",
+  kotlin: "Kotlin",
+  swift: "Swift",
+  go: "Go",
+  golang: "Go",
+  rust: "Rust",
+  c: "C",
+  cpp: "C++",
+  "c++": "C++",
+  csharp: "C#",
+  "c#": "C#",
+  php: "PHP",
+  ruby: "Ruby",
+  dart: "Dart",
+  html: "HTML",
+  css: "CSS",
+  scss: "SCSS",
+  shell: "Shell",
+  bash: "Bash",
+  "jupyter notebook": "Jupyter",
+  react: "React",
+  reactjs: "React",
+  nextjs: "Next.js",
+  vue: "Vue.js",
+  vuejs: "Vue.js",
+  svelte: "Svelte",
+  sveltekit: "SvelteKit",
+  angular: "Angular",
+  nodejs: "Node.js",
+  node: "Node.js",
+  express: "Express",
+  expressjs: "Express",
+  tailwindcss: "Tailwind CSS",
+  tailwind: "Tailwind CSS",
+  threejs: "Three.js",
+  vite: "Vite",
+  webgl: "WebGL",
+  fastapi: "FastAPI",
+  django: "Django",
+  flask: "Flask",
+  tauri: "Tauri",
+  electron: "Electron",
+  android: "Android",
+  "jetpack-compose": "Jetpack Compose",
+  flutter: "Flutter",
+  "react-native": "React Native",
+  docker: "Docker",
+  kubernetes: "Kubernetes",
+  aws: "AWS",
+  gcp: "Google Cloud",
+  firebase: "Firebase",
+  supabase: "Supabase",
+  mongodb: "MongoDB",
+  postgresql: "PostgreSQL",
+  postgres: "PostgreSQL",
+  mysql: "MySQL",
+  sqlite: "SQLite",
+  redis: "Redis",
+  graphql: "GraphQL",
+  "cloudflare-workers": "Cloudflare Workers",
+  "github-actions": "GitHub Actions",
+  opencv: "OpenCV",
+  pytorch: "PyTorch",
+  tensorflow: "TensorFlow",
+  "machine-learning": "Machine Learning",
+  llm: "LLMs",
+  ollama: "Ollama",
+  openai: "OpenAI API",
+  mediapipe: "MediaPipe",
+  "chrome-extension": "Chrome Extensions",
+  "vscode-extension": "VS Code Extensions",
+  git: "Git",
+  linux: "Linux",
+};
 
 const PROFILE_FIELDS = [
   "fullName",
@@ -12,35 +110,90 @@ const PROFILE_FIELDS = [
   "linkedin",
   "githubUsername",
   "summary",
-  "skills",
   "languages",
 ];
 
-const elements = {
-  ...Object.fromEntries(PROFILE_FIELDS.map((field) => [field, document.querySelector(`#${field}`)])),
-  projectStatus: document.querySelector("#projectStatus"),
-  projectChecklist: document.querySelector("#projectChecklist"),
-  previewFullName: document.querySelector("#previewFullName"),
-  previewHeadline: document.querySelector("#previewHeadline"),
-  previewContact: document.querySelector("#previewContact"),
-  previewSummary: document.querySelector("#previewSummary"),
-  previewSummarySection: document.querySelector("#previewSummarySection"),
-  previewSkills: document.querySelector("#previewSkills"),
-  previewSkillsSection: document.querySelector("#previewSkillsSection"),
-  previewLanguages: document.querySelector("#previewLanguages"),
-  previewLanguagesSection: document.querySelector("#previewLanguagesSection"),
-  previewProjects: document.querySelector("#previewProjects"),
-  futureProjectForm: document.querySelector("#futureProjectForm"),
-  loadProjectsButton: document.querySelector("#loadProjectsButton"),
-  printResumeButton: document.querySelector("#printResumeButton"),
-  exportButton: document.querySelector("#exportButton"),
-  importInput: document.querySelector("#importInput"),
-  resetButton: document.querySelector("#resetButton"),
-  saveStatus: document.querySelector("#saveStatus"),
-  templatePicker: document.querySelector("#templatePicker"),
-  resumePreview: document.querySelector("#resumePreview"),
+// Values older versions prefilled into the form. Saved data still holding them is cleared
+// once on load so the placeholders show instead of text the user has to delete.
+const LEGACY_DEFAULTS = {
+  fullName: "Your Name",
+  headline: "Frontend Developer",
+  email: "you@example.com",
+  phone: "+00 123 456 7890",
+  location: "Remote",
+  summary:
+    "Write a short summary that highlights your strengths, preferred technologies, and the value you bring to a team.",
+  skills: "JavaScript, TypeScript, React, HTML, CSS, Node.js",
 };
 
+const LEGACY_SAMPLE_ENTRIES = {
+  experience: (entry) => entry.role === "Frontend Developer Intern" && entry.company === "Company Name",
+  education: (entry) => entry.school === "University Name" && entry.degree === "B.Tech, Computer Science",
+};
+
+const elements = {
+  ...Object.fromEntries(
+    [
+      ...PROFILE_FIELDS,
+      "skillChips",
+      "skillInput",
+      "skillEditor",
+      "skillsCount",
+      "importSkillsButton",
+      "projectsCount",
+      "selectedProjects",
+      "openProjectsButton",
+      "openCustomProjectButton",
+      "projectStatus",
+      "loadProjectsButton",
+      "publicMode",
+      "tokenMode",
+      "githubToken",
+      "connectTokenButton",
+      "rememberToken",
+      "disconnectTokenButton",
+      "projectDialog",
+      "projectDialogSummary",
+      "projectSearch",
+      "projectFilter",
+      "projectList",
+      "projectPager",
+      "customProjectDialog",
+      "futureProjectForm",
+      "skillDialog",
+      "skillImportStatus",
+      "skillSearch",
+      "toggleAllSkills",
+      "skillSuggestions",
+      "skillPager",
+      "addSkillsButton",
+      "previewFullName",
+      "previewHeadline",
+      "previewContact",
+      "previewSummary",
+      "previewSummarySection",
+      "previewSkills",
+      "previewSkillsSection",
+      "previewLanguages",
+      "previewLanguagesSection",
+      "previewProjects",
+      "previewProjectsSection",
+      "templatePicker",
+      "colorPicker",
+      "customAccent",
+      "resumePreview",
+      "printResumeButton",
+      "exportButton",
+      "importInput",
+      "resetButton",
+      "saveStatus",
+    ].map((id) => [id, document.getElementById(id)]),
+  ),
+  privateWarnings: document.querySelectorAll("[data-private-warning]"),
+  githubModeInputs: document.querySelectorAll('input[name="githubMode"]'),
+};
+
+// Offline fallback for @Syrthax when the GitHub API can't be reached.
 const bundledGithubProjects = [
   ["NiaCina", "A resume project selector so that you dont need to type new resume everytime for different project showcase", "", "https://github.com/Syrthax/NiaCina"],
   ["mosie", "Your smart health assistant", "", "https://github.com/Syrthax/mosie"],
@@ -76,13 +229,15 @@ const bundledGithubProjects = [
 ].map(([name, description, tech, url]) => ({
   id: `github-${name.toLowerCase()}`,
   name,
-  description: description || "GitHub repository ready to be highlighted in your resume.",
-  tech: tech || "Mixed",
+  description,
+  tech,
+  language: tech,
+  topics: [],
   url,
+  private: false,
   selected: false,
   source: "github",
 }));
-
 const ENTRY_SECTIONS = {
   experience: {
     noun: "experience",
@@ -172,39 +327,23 @@ const ENTRY_SECTIONS = {
   },
 };
 
-const SAMPLE_ENTRIES = {
-  experience: [
-    {
-      role: "Frontend Developer Intern",
-      company: "Company Name",
-      location: "Remote",
-      start: "Jun 2024",
-      end: "Aug 2024",
-      highlights:
-        "Shipped a feature that improved something measurable by a clear percentage\nCollaborated with designers and backend engineers to deliver on schedule",
-    },
-  ],
-  education: [
-    {
-      school: "University Name",
-      degree: "B.Tech, Computer Science",
-      location: "City",
-      score: "",
-      start: "2022",
-      end: "2026",
-      details: "",
-    },
-  ],
-  certifications: [],
-  achievements: [],
-};
-
 const state = {
   template: TEMPLATES[0],
-  projects: [...bundledGithubProjects],
-  entries: Object.fromEntries(
-    Object.keys(ENTRY_SECTIONS).map((section) => [section, SAMPLE_ENTRIES[section].map(createEntry)]),
-  ),
+  accent: DEFAULT_ACCENT,
+  hidePrivateLinks: false,
+  skills: [],
+  projects: [],
+  // Selections from saves made before project data was stored; resolved once repos load.
+  legacySelectedUrls: new Set(),
+  entries: {
+    experience: [createEntry()],
+    education: [createEntry()],
+    certifications: [],
+    achievements: [],
+  },
+  github: { mode: "public", token: "", loading: null },
+  projectDialog: { page: 1 },
+  skillImport: { suggestions: [], selected: new Set(), page: 1 },
 };
 
 function createEntry(values = {}) {
@@ -225,7 +364,7 @@ function escapeHtml(value) {
 }
 
 function normaliseList(value) {
-  return value
+  return String(value ?? "")
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
@@ -261,6 +400,29 @@ function formatRange(start, end, openLabel = "") {
   return [from, to].filter(Boolean).join(" – ");
 }
 
+function plural(count, singular, pluralForm = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : pluralForm}`;
+}
+
+function paginate(items, page, perPage) {
+  const totalPages = Math.max(1, Math.ceil(items.length / perPage));
+  const current = Math.min(Math.max(1, page), totalPages);
+  return {
+    page: current,
+    totalPages,
+    items: items.slice((current - 1) * perPage, current * perPage),
+  };
+}
+
+function renderPager(container, page, totalPages) {
+  container.hidden = totalPages <= 1;
+  container.innerHTML = `
+    <button type="button" class="ghost small" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>${ICONS.left} Prev</button>
+    <span>Page ${page} of ${totalPages}</span>
+    <button type="button" class="ghost small" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>Next ${ICONS.right}</button>
+  `;
+}
+
 function entryPreview({ title, subtitle = [], date, bullets = [], text, url }) {
   const safeUrl = normaliseUrl(url);
   const subtitleText = subtitle.map((part) => (part || "").trim()).filter(Boolean).join(" · ");
@@ -285,6 +447,10 @@ function entryHasContent(section, entry) {
   return ENTRY_SECTIONS[section].fields.some((field) => String(entry[field.key] ?? "").trim());
 }
 
+// ---------------------------------------------------------------------------
+// Preview
+// ---------------------------------------------------------------------------
+
 function renderContactLine() {
   const email = elements.email.value.trim();
   const website = normaliseUrl(elements.website.value.trim());
@@ -307,70 +473,283 @@ function renderContactLine() {
 function renderEntryPreviews() {
   Object.entries(ENTRY_SECTIONS).forEach(([section, config]) => {
     const key = section[0].toUpperCase() + section.slice(1);
-    const container = document.querySelector(`#preview${key}`);
-    const wrapper = document.querySelector(`#preview${key}Section`);
+    const container = document.getElementById(`preview${key}`);
+    const wrapper = document.getElementById(`preview${key}Section`);
     const visible = state.entries[section].filter((entry) => entry.include && entryHasContent(section, entry));
 
     container.innerHTML = visible.map(config.render).join("");
     wrapper.hidden = !visible.length;
+
+    const badge = document.querySelector(`.entry-section[data-section="${section}"] [data-count]`);
+    badge.textContent = visible.length ? `${visible.length} on resume` : "";
+  });
+}
+
+function renderProjectPreviews() {
+  const selectedProjects = state.projects.filter((project) => project.selected);
+  elements.previewProjectsSection.hidden = !selectedProjects.length;
+
+  elements.previewProjects.innerHTML = selectedProjects
+    .map((project) => {
+      const techStack = project.tech ? `<p><strong>Tech:</strong> ${escapeHtml(project.tech)}</p>` : "";
+      const safeUrl = project.private && state.hidePrivateLinks ? "" : normaliseUrl(project.url);
+      const link = safeUrl
+        ? `<p><strong>Link:</strong> <a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(displayUrl(safeUrl))}</a></p>`
+        : "";
+      const privateFlag = project.private
+        ? '<span class="private-flag screen-only" title="Private on GitHub. The link won\'t open for recruiters.">Private repo</span>'
+        : "";
+
+      return `
+        <article class="resume-project">
+          <h3>${escapeHtml(project.name)} ${privateFlag}</h3>
+          ${project.description ? `<p>${escapeHtml(project.description)}</p>` : ""}
+          ${techStack}
+          ${link}
+        </article>
+      `;
+    })
+    .join("");
+}
+
+let lastWarningHtml = null;
+
+function renderPrivateWarnings() {
+  const privateProjects = state.projects.filter((project) => project.selected && project.private);
+  const count = privateProjects.length;
+  const names = privateProjects.map((project) => `<strong>${escapeHtml(project.name)}</strong>`).join(", ");
+  const html = count
+    ? `
+      <p class="private-warning-title">${ICONS.alert} ${plural(count, "private repository", "private repositories")} on your resume</p>
+      <p>${names} ${count === 1 ? "is" : "are"} private on GitHub, so anyone who opens the link gets a 404 page. Make ${count === 1 ? "it" : "them"} public, or hide the link.</p>
+      <label class="checkbox">
+        <input type="checkbox" data-hide-private-links ${state.hidePrivateLinks ? "checked" : ""} />
+        Hide links to private repositories on the resume
+      </label>
+    `
+    : "";
+
+  if (html === lastWarningHtml) {
+    return;
+  }
+  lastWarningHtml = html;
+  elements.privateWarnings.forEach((warning) => {
+    warning.hidden = !count;
+    warning.innerHTML = html;
   });
 }
 
 function updatePreview() {
-  elements.previewFullName.textContent = elements.fullName.value.trim() || "Your Name";
-  elements.previewHeadline.textContent = elements.headline.value.trim();
+  const name = elements.fullName.value.trim();
+  elements.previewFullName.textContent = name || "Your Name";
+  elements.previewFullName.classList.toggle("is-placeholder", !name);
+
+  const headline = elements.headline.value.trim();
+  elements.previewHeadline.textContent = headline;
+  elements.previewHeadline.hidden = !headline;
   renderContactLine();
 
   const summary = elements.summary.value.trim();
   elements.previewSummary.textContent = summary;
   elements.previewSummarySection.hidden = !summary;
 
-  const skills = normaliseList(elements.skills.value);
-  elements.previewSkills.innerHTML = skills.map((skill) => `<li>${escapeHtml(skill)}</li>`).join("");
-  elements.previewSkillsSection.hidden = !skills.length;
+  elements.previewSkills.innerHTML = state.skills.map((skill) => `<li>${escapeHtml(skill)}</li>`).join("");
+  elements.previewSkillsSection.hidden = !state.skills.length;
 
   const languages = normaliseList(elements.languages.value);
   elements.previewLanguages.textContent = languages.join(" · ");
   elements.previewLanguagesSection.hidden = !languages.length;
 
   renderEntryPreviews();
-
-  const selectedProjects = state.projects.filter((project) => project.selected);
-  const projectSection = elements.previewProjects.closest(".resume-section");
-  projectSection.toggleAttribute("data-empty", !selectedProjects.length);
-
-  if (!selectedProjects.length) {
-    elements.previewProjects.innerHTML =
-      '<p class="empty-state">Select GitHub projects or add future projects to display them in the resume preview.</p>';
-  } else {
-    elements.previewProjects.innerHTML = selectedProjects
-      .map((project) => {
-        const techStack = project.tech ? `<p><strong>Tech:</strong> ${escapeHtml(project.tech)}</p>` : "";
-        const safeUrl = normaliseUrl(project.url);
-        const link = safeUrl
-          ? `<p><strong>Link:</strong> <a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(displayUrl(safeUrl))}</a></p>`
-          : "";
-
-        return `
-          <article class="resume-project">
-            <h3>${escapeHtml(project.name)}</h3>
-            <p>${escapeHtml(project.description || "Project details coming soon.")}</p>
-            ${techStack}
-            ${link}
-          </article>
-        `;
-      })
-      .join("");
-  }
-
+  renderProjectPreviews();
+  renderPrivateWarnings();
   scheduleSave();
 }
+
+// ---------------------------------------------------------------------------
+// Template and color
+// ---------------------------------------------------------------------------
+
+function applyTemplate(template) {
+  state.template = TEMPLATES.includes(template) ? template : TEMPLATES[0];
+  TEMPLATES.forEach((name) => elements.resumePreview.classList.toggle(`template-${name}`, name === state.template));
+  elements.templatePicker.querySelector(`input[value="${state.template}"]`).checked = true;
+}
+
+function applyAccent(color) {
+  state.accent = /^#[0-9a-f]{6}$/i.test(color) ? color.toLowerCase() : DEFAULT_ACCENT;
+  elements.resumePreview.style.setProperty("--accent", state.accent);
+  elements.resumePreview.style.setProperty("--accent-soft", `color-mix(in srgb, ${state.accent} 12%, white)`);
+
+  let matchedSwatch = false;
+  elements.colorPicker.querySelectorAll('input[name="accent"]').forEach((input) => {
+    input.checked = input.value === state.accent;
+    matchedSwatch ||= input.checked;
+  });
+  elements.customAccent.value = state.accent;
+  elements.customAccent.closest("label").classList.toggle("is-active", !matchedSwatch);
+}
+
+// ---------------------------------------------------------------------------
+// Skills
+// ---------------------------------------------------------------------------
+
+function renderSkills() {
+  elements.skillChips.innerHTML = state.skills
+    .map(
+      (skill, index) => `
+        <li class="chip">
+          ${escapeHtml(skill)}
+          <button type="button" data-remove-skill="${index}" aria-label="Remove ${escapeHtml(skill)}">${ICONS.x}</button>
+        </li>
+      `,
+    )
+    .join("");
+  elements.skillsCount.textContent = state.skills.length ? plural(state.skills.length, "skill") : "";
+}
+
+function addSkills(values) {
+  const existing = new Set(state.skills.map((skill) => skill.toLowerCase()));
+  values
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .forEach((skill) => {
+      if (!existing.has(skill.toLowerCase())) {
+        existing.add(skill.toLowerCase());
+        state.skills.push(skill);
+      }
+    });
+  renderSkills();
+  updatePreview();
+}
+
+function removeSkill(index) {
+  state.skills.splice(index, 1);
+  renderSkills();
+  updatePreview();
+}
+
+function commitSkillInput() {
+  const pending = elements.skillInput.value;
+  elements.skillInput.value = "";
+  addSkills(normaliseList(pending));
+}
+
+function skillDisplayName(raw, isLanguage) {
+  const known = SKILL_NAMES[raw.toLowerCase()];
+  if (known || isLanguage) {
+    return { name: known || raw, known: true };
+  }
+  const name = raw
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+  return { name, known: false };
+}
+
+function collectGithubSkills() {
+  const existing = new Set(state.skills.map((skill) => skill.toLowerCase()));
+  const found = new Map();
+
+  const add = (raw, isLanguage) => {
+    if (!raw) {
+      return;
+    }
+    const { name, known } = skillDisplayName(raw, isLanguage);
+    const key = name.toLowerCase();
+    if (existing.has(key)) {
+      return;
+    }
+    const entry = found.get(key) || { name, known, count: 0 };
+    entry.known ||= known;
+    entry.count += 1;
+    found.set(key, entry);
+  };
+
+  state.projects
+    .filter((project) => project.source === "github")
+    .forEach((project) => {
+      add(project.language, true);
+      (project.topics || []).forEach((topic) => add(topic, false));
+    });
+
+  return [...found.values()].sort((a, b) => b.known - a.known || b.count - a.count || a.name.localeCompare(b.name));
+}
+
+function filteredSkillSuggestions() {
+  const query = elements.skillSearch.value.trim().toLowerCase();
+  return state.skillImport.suggestions.filter((skill) => !query || skill.name.toLowerCase().includes(query));
+}
+
+function renderSkillSuggestions() {
+  const { suggestions, selected } = state.skillImport;
+  const filtered = filteredSkillSuggestions();
+  const { items, page, totalPages } = paginate(filtered, state.skillImport.page, SKILLS_PER_PAGE);
+  state.skillImport.page = page;
+
+  elements.skillSuggestions.innerHTML = items.length
+    ? items
+        .map(
+          (skill) => `
+            <label class="skill-chip">
+              <input type="checkbox" value="${escapeHtml(skill.name)}" ${selected.has(skill.name) ? "checked" : ""} />
+              ${escapeHtml(skill.name)}
+              <span class="skill-count" title="Used in ${plural(skill.count, "repository", "repositories")}">${skill.count}</span>
+            </label>
+          `,
+        )
+        .join("")
+    : `<p class="empty-state">${suggestions.length ? "No skills match that filter." : "Nothing new to import."}</p>`;
+
+  renderPager(elements.skillPager, page, totalPages);
+
+  const allFilteredSelected = filtered.length && filtered.every((skill) => selected.has(skill.name));
+  elements.toggleAllSkills.textContent = allFilteredSelected ? "Clear all" : "Select all";
+  elements.toggleAllSkills.hidden = !filtered.length;
+  elements.addSkillsButton.disabled = !selected.size;
+  elements.addSkillsButton.textContent = selected.size ? `Add ${plural(selected.size, "skill")}` : "Add selected";
+}
+
+async function openSkillImport() {
+  state.skillImport = { suggestions: [], selected: new Set(), page: 1 };
+  elements.skillSearch.value = "";
+  elements.skillImportStatus.textContent = "Reading languages and topics from your repositories…";
+  elements.skillSuggestions.innerHTML = '<p class="empty-state">Loading…</p>';
+  elements.skillPager.hidden = true;
+  elements.addSkillsButton.disabled = true;
+  elements.toggleAllSkills.hidden = true;
+  elements.skillDialog.showModal();
+
+  await loadGithubProjects();
+
+  const suggestions = collectGithubSkills();
+  state.skillImport.suggestions = suggestions;
+  state.skillImport.selected = new Set(suggestions.filter((skill) => skill.known).map((skill) => skill.name));
+
+  const githubCount = state.projects.filter((project) => project.source === "github").length;
+  elements.skillImportStatus.textContent = !githubCount
+    ? "No repositories loaded. Add your GitHub username in Basics or connect a token."
+    : suggestions.length
+      ? `${plural(suggestions.length, "skill")} found across ${plural(githubCount, "repository", "repositories")} that you haven't listed yet. Languages and recognised tech are pre-selected. The number shows how many repos use each one.`
+      : "Every language and topic in your repositories is already in your skills.";
+  renderSkillSuggestions();
+}
+
+function addImportedSkills() {
+  const { suggestions, selected } = state.skillImport;
+  addSkills(suggestions.filter((skill) => selected.has(skill.name)).map((skill) => skill.name));
+  elements.skillDialog.close();
+}
+
+// ---------------------------------------------------------------------------
+// Entry sections (experience, education, ...)
+// ---------------------------------------------------------------------------
 
 function entryCardTitle(section, entry) {
   const title = ENTRY_SECTIONS[section].titleKeys
     .map((key) => (entry[key] || "").trim())
     .filter(Boolean)
-    .join(" — ");
+    .join(" · ");
   return title || `New ${ENTRY_SECTIONS[section].noun}`;
 }
 
@@ -380,7 +759,7 @@ function renderEntryEditor(section) {
   const entries = state.entries[section];
 
   if (!entries.length) {
-    list.innerHTML = `<p class="empty-state">No ${config.noun} entries yet.</p>`;
+    list.innerHTML = `<p class="empty-state">No ${config.noun} added yet.</p>`;
     return;
   }
 
@@ -399,16 +778,14 @@ function renderEntryEditor(section) {
         .join("");
 
       return `
-        <article class="entry-card${entry.include ? "" : " is-excluded"}" data-id="${entry.id}">
+        <article class="entry-card${entry.include ? "" : " is-excluded"}${entry.collapsed ? " is-collapsed" : ""}" data-id="${entry.id}">
           <div class="entry-card-header">
-            <label class="include-toggle" title="Show this entry on the resume">
-              <input type="checkbox" data-field="include" ${entry.include ? "checked" : ""} />
-              <span class="entry-card-title">${escapeHtml(entryCardTitle(section, entry))}</span>
-            </label>
+            <input type="checkbox" data-field="include" ${entry.include ? "checked" : ""} title="Show on resume" aria-label="Show on resume" />
+            <button type="button" class="entry-card-title" data-action="toggle" aria-expanded="${!entry.collapsed}"><span class="entry-card-title-text">${escapeHtml(entryCardTitle(section, entry))}</span></button>
             <div class="entry-actions">
-              <button type="button" class="icon-button" data-action="up" aria-label="Move up" ${index === 0 ? "disabled" : ""}>↑</button>
-              <button type="button" class="icon-button" data-action="down" aria-label="Move down" ${index === entries.length - 1 ? "disabled" : ""}>↓</button>
-              <button type="button" class="icon-button danger" data-action="remove" aria-label="Remove entry">✕</button>
+              <button type="button" class="icon-button" data-action="up" aria-label="Move up" ${index === 0 ? "disabled" : ""}>${ICONS.up}</button>
+              <button type="button" class="icon-button" data-action="down" aria-label="Move down" ${index === entries.length - 1 ? "disabled" : ""}>${ICONS.down}</button>
+              <button type="button" class="icon-button danger" data-action="remove" aria-label="Remove entry">${ICONS.x}</button>
             </div>
           </div>
           <div class="form-grid entry-fields">${fields}</div>
@@ -423,10 +800,13 @@ function setupEntrySection(section) {
 
   container.querySelector(".add-entry").addEventListener("click", () => {
     const entry = createEntry();
+    state.entries[section].forEach((item) => {
+      item.collapsed = entryHasContent(section, item);
+    });
     state.entries[section].push(entry);
     renderEntryEditor(section);
     updatePreview();
-    container.querySelector(`[data-id="${entry.id}"] input:not([type='checkbox'])`)?.focus();
+    container.querySelector(`[data-id="${entry.id}"] .entry-fields input`)?.focus();
   });
 
   container.addEventListener("input", (event) => {
@@ -442,7 +822,7 @@ function setupEntrySection(section) {
       card.classList.toggle("is-excluded", !entry.include);
     } else {
       entry[field] = event.target.value;
-      card.querySelector(".entry-card-title").textContent = entryCardTitle(section, entry);
+      card.querySelector(".entry-card-title-text").textContent = entryCardTitle(section, entry);
     }
     updatePreview();
   });
@@ -457,6 +837,14 @@ function setupEntrySection(section) {
     const entries = state.entries[section];
     const index = entries.findIndex((item) => item.id === card.dataset.id);
     const action = button.dataset.action;
+
+    if (action === "toggle") {
+      const entry = entries[index];
+      entry.collapsed = !entry.collapsed;
+      card.classList.toggle("is-collapsed", entry.collapsed);
+      button.setAttribute("aria-expanded", String(!entry.collapsed));
+      return;
+    }
 
     if (action === "remove") {
       if (entryHasContent(section, entries[index]) && !window.confirm(`Remove this ${ENTRY_SECTIONS[section].noun} entry?`)) {
@@ -476,122 +864,123 @@ function setupEntrySection(section) {
   });
 }
 
-function applyTemplate(template) {
-  state.template = TEMPLATES.includes(template) ? template : TEMPLATES[0];
-  TEMPLATES.forEach((name) => elements.resumePreview.classList.toggle(`template-${name}`, name === state.template));
-  elements.templatePicker.querySelector(`input[value="${state.template}"]`).checked = true;
+// ---------------------------------------------------------------------------
+// Projects
+// ---------------------------------------------------------------------------
+
+function renderSelectedProjects() {
+  const selected = state.projects.filter((project) => project.selected);
+  elements.projectsCount.textContent = selected.length ? `${selected.length} on resume` : "";
+
+  elements.selectedProjects.innerHTML = selected.length
+    ? `<ul class="chip-list">${selected
+        .map(
+          (project) => `
+            <li class="chip${project.private ? " chip-private" : ""}">
+              ${project.private ? `<span class="chip-icon" title="Private repository">${ICONS.lock}</span>` : ""}
+              ${escapeHtml(project.name)}
+              <button type="button" data-deselect-project="${escapeHtml(project.id)}" aria-label="Remove ${escapeHtml(project.name)} from resume">${ICONS.x}</button>
+            </li>
+          `,
+        )
+        .join("")}</ul>`
+    : '<p class="empty-state">No projects on your resume yet. Pick from your GitHub repositories or add a custom one.</p>';
 }
 
-function renderProjectChecklist() {
+function projectMatches(project, query, filter) {
+  if (filter === "selected" && !project.selected) return false;
+  if (filter === "public" && (project.private || project.source !== "github")) return false;
+  if (filter === "private" && !project.private) return false;
+  if (filter === "manual" && project.source !== "manual") return false;
+  if (!query) return true;
+  return [project.name, project.description, project.tech].some((value) => String(value || "").toLowerCase().includes(query));
+}
+
+function renderProjectDialog() {
+  const query = elements.projectSearch.value.trim().toLowerCase();
+  const filter = elements.projectFilter.value;
+  const filtered = state.projects.filter((project) => projectMatches(project, query, filter));
+  const { items, page, totalPages } = paginate(filtered, state.projectDialog.page, PROJECTS_PER_PAGE);
+  state.projectDialog.page = page;
+
+  const selectedCount = state.projects.filter((project) => project.selected).length;
+  elements.projectDialogSummary.textContent = `${selectedCount} selected · ${plural(state.projects.length, "project")} available`;
+
   if (!state.projects.length) {
-    elements.projectChecklist.innerHTML =
-      '<p class="empty-state">No projects yet. Load a GitHub profile or add a future project below.</p>';
-    updatePreview();
-    return;
+    elements.projectList.innerHTML =
+      '<p class="empty-state">No repositories loaded yet. Add your GitHub username in Basics, or connect a token to include private repos.</p>';
+  } else if (!items.length) {
+    elements.projectList.innerHTML = '<p class="empty-state">No projects match your search.</p>';
+  } else {
+    elements.projectList.innerHTML = items
+      .map(
+        (project) => `
+          <div class="project-option${project.selected ? " is-selected" : ""}">
+            <label class="project-option-main">
+              <input type="checkbox" data-project-id="${escapeHtml(project.id)}" ${project.selected ? "checked" : ""} />
+              <span class="project-option-body">
+                <span class="project-option-title">
+                  ${escapeHtml(project.name)}
+                  ${project.private ? `<span class="tag tag-private">${ICONS.lock} Private</span>` : ""}
+                  ${project.source === "manual" ? '<span class="tag">Custom</span>' : ""}
+                </span>
+                <span class="project-option-desc">${escapeHtml(project.description || "No description.")}</span>
+                ${project.tech ? `<span class="project-meta">${escapeHtml(project.tech)}</span>` : ""}
+              </span>
+            </label>
+            ${
+              project.source === "manual"
+                ? `<button type="button" class="icon-button danger" data-remove-project="${escapeHtml(project.id)}" aria-label="Delete ${escapeHtml(project.name)}">${ICONS.x}</button>`
+                : ""
+            }
+          </div>
+        `,
+      )
+      .join("");
   }
 
-  elements.projectChecklist.innerHTML = state.projects
-    .map(
-      (project) => `
-        <div class="project-row">
-          <label class="project-item" for="project-${project.id}">
-            <input id="project-${project.id}" data-project-id="${project.id}" type="checkbox" ${project.selected ? "checked" : ""} />
-            <span>
-              <h3>${escapeHtml(project.name)}</h3>
-              <p>${escapeHtml(project.description || "No description provided yet.")}</p>
-              <span class="project-meta">${escapeHtml(project.tech || "Tech stack not listed")}${project.source === "manual" ? " · added manually" : ""}</span>
-            </span>
-          </label>
-          ${
-            project.source === "manual"
-              ? `<button type="button" class="icon-button danger" data-remove-project="${project.id}" aria-label="Remove ${escapeHtml(project.name)}">✕</button>`
-              : ""
-          }
-        </div>
-      `,
-    )
-    .join("");
+  renderPager(elements.projectPager, page, totalPages);
+}
 
+function renderProjects() {
+  renderSelectedProjects();
+  if (elements.projectDialog.open) {
+    renderProjectDialog();
+  }
   updatePreview();
 }
 
+function setProjectSelected(id, selected) {
+  const project = state.projects.find((entry) => entry.id === id);
+  if (project) {
+    project.selected = selected;
+    renderProjects();
+  }
+}
+
 function mergeProjects(newProjects) {
-  const existingGithubProjects = state.projects.filter((project) => project.source === "github");
-  const manualProjects = state.projects.filter((project) => project.source === "manual");
-  const selectedGithubProjects = new Map(existingGithubProjects.map((project) => [project.url, project.selected]));
+  const previous = new Map(
+    state.projects.filter((project) => project.source === "github").map((project) => [project.url, project]),
+  );
+  const fetchedUrls = new Set(newProjects.map((project) => project.url));
+  // Keep selected repos that this load can't see (e.g. private ones without a token) so the resume doesn't lose them.
+  const unseenSelected = [...previous.values()].filter((project) => project.selected && !fetchedUrls.has(project.url));
 
   state.projects = [
     ...newProjects.map((project) => ({
       ...project,
-      selected: selectedGithubProjects.get(project.url) ?? project.selected,
+      selected: previous.get(project.url)?.selected ?? state.legacySelectedUrls.has(project.url),
     })),
-    ...manualProjects,
+    ...unseenSelected,
+    ...state.projects.filter((project) => project.source === "manual"),
   ];
-  renderProjectChecklist();
-}
-
-async function loadGithubProjects() {
-  const username = elements.githubUsername.value.trim() || "Syrthax";
-  elements.projectStatus.textContent = `Loading projects from @${username}...`;
-  elements.loadProjectsButton.disabled = true;
-
-  try {
-    const repositories = [];
-    let page = 1;
-
-    while (true) {
-      const response = await fetch(
-        `https://api.github.com/users/${encodeURIComponent(username)}/repos?per_page=100&sort=updated&page=${page}`,
-      );
-
-      if (!response.ok) {
-        throw new Error(`GitHub returned ${response.status}`);
-      }
-
-      const pageRepositories = await response.json();
-      repositories.push(...pageRepositories);
-
-      if (pageRepositories.length < 100) {
-        break;
-      }
-
-      page += 1;
-    }
-
-    const projects = repositories
-      .filter((repository) => !repository.fork)
-      .map((repository) => ({
-        id: `github-${repository.id}`,
-        name: repository.name,
-        description: repository.description || "GitHub repository ready to be highlighted in your resume.",
-        tech: repository.language || "Mixed",
-        url: repository.html_url,
-        selected: false,
-        source: "github",
-      }));
-
-    mergeProjects(projects);
-    elements.projectStatus.textContent = `Loaded ${projects.length} GitHub project${projects.length === 1 ? "" : "s"} from @${username}.`;
-  } catch (error) {
-    if (username.toLowerCase() === "syrthax") {
-      elements.projectStatus.textContent =
-        "Live GitHub loading is unavailable right now, so the page is showing the bundled project list for @Syrthax. You can still add and select future projects manually.";
-    } else {
-      elements.projectStatus.textContent = `Unable to load GitHub projects for @${username}. Keeping the current project list in place.`;
-    }
-  } finally {
-    elements.loadProjectsButton.disabled = false;
-  }
+  renderProjects();
 }
 
 function addFutureProject(event) {
   event.preventDefault();
 
-  const projectName = document.querySelector("#futureProjectName").value.trim();
-  const projectTech = document.querySelector("#futureProjectTech").value.trim();
-  const projectLink = normaliseUrl(document.querySelector("#futureProjectLink").value.trim());
-  const projectDescription = document.querySelector("#futureProjectDescription").value.trim();
-
+  const projectName = document.getElementById("futureProjectName").value.trim();
   if (!projectName) {
     return;
   }
@@ -599,77 +988,302 @@ function addFutureProject(event) {
   state.projects.push({
     id: `manual-${Date.now()}`,
     name: projectName,
-    description: projectDescription || "Future project ready for resume inclusion.",
-    tech: projectTech || "To be decided",
-    url: projectLink,
+    description: document.getElementById("futureProjectDescription").value.trim(),
+    tech: document.getElementById("futureProjectTech").value.trim(),
+    url: normaliseUrl(document.getElementById("futureProjectLink").value.trim()),
+    private: false,
     selected: true,
     source: "manual",
   });
 
-  elements.projectStatus.textContent = "Future project added. Adjust the checkbox list to control what appears in the resume.";
   elements.futureProjectForm.reset();
-  renderProjectChecklist();
+  elements.customProjectDialog.close();
+  renderProjects();
 }
 
-// Persistence: everything lives in this browser's localStorage, plus JSON export/import for backups.
+// ---------------------------------------------------------------------------
+// GitHub
+// ---------------------------------------------------------------------------
+
+function setGithubMode(mode) {
+  state.github.mode = mode === "token" ? "token" : "public";
+  elements.githubModeInputs.forEach((input) => {
+    input.checked = input.value === state.github.mode;
+  });
+  elements.publicMode.hidden = state.github.mode !== "public";
+  elements.tokenMode.hidden = state.github.mode !== "token";
+  elements.disconnectTokenButton.hidden = !state.github.token;
+}
+
+async function githubFetch(url, token) {
+  const headers = { Accept: "application/vnd.github+json" };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  const response = await fetch(url, { headers });
+  if (!response.ok) {
+    const error = new Error(`GitHub returned ${response.status}`);
+    error.status = response.status;
+    throw error;
+  }
+  return response.json();
+}
+
+function setGithubBusy(busy) {
+  [elements.loadProjectsButton, elements.connectTokenButton, elements.importSkillsButton].forEach((button) => {
+    button.disabled = busy;
+  });
+}
+
+function loadGithubProjects() {
+  // Share one in-flight request between callers (startup, skill import, buttons).
+  state.github.loading ||= fetchGithubProjects().finally(() => {
+    state.github.loading = null;
+  });
+  return state.github.loading;
+}
+
+async function fetchGithubProjects() {
+  const token = state.github.mode === "token" ? state.github.token : "";
+  const username = elements.githubUsername.value.trim();
+
+  if (!token && !username) {
+    elements.projectStatus.textContent =
+      state.github.mode === "token"
+        ? "Paste a token and press Connect to list your private repositories."
+        : "Add your GitHub username in Basics to load your public repositories.";
+    return;
+  }
+
+  setGithubBusy(true);
+  elements.projectStatus.textContent = token
+    ? "Loading repositories with your token…"
+    : `Loading public repositories for @${username}…`;
+
+  try {
+    let login = username;
+    let endpoint = `https://api.github.com/users/${encodeURIComponent(username)}/repos?sort=updated`;
+
+    if (token) {
+      login = (await githubFetch("https://api.github.com/user", token)).login;
+      endpoint = "https://api.github.com/user/repos?sort=updated&affiliation=owner,collaborator,organization_member";
+      if (!username) {
+        elements.githubUsername.value = login;
+      }
+    }
+
+    const repositories = [];
+    for (let page = 1; ; page += 1) {
+      const pageRepositories = await githubFetch(`${endpoint}&per_page=100&page=${page}`, token);
+      repositories.push(...pageRepositories);
+      if (pageRepositories.length < 100) {
+        break;
+      }
+    }
+
+    const projects = repositories
+      .filter((repository) => !repository.fork)
+      .map((repository) => ({
+        id: `github-${repository.id}`,
+        name:
+          repository.owner?.login && repository.owner.login.toLowerCase() !== login.toLowerCase()
+            ? repository.full_name
+            : repository.name,
+        description: repository.description || "",
+        tech: repository.language || "",
+        language: repository.language || "",
+        topics: Array.isArray(repository.topics) ? repository.topics : [],
+        url: repository.html_url,
+        private: Boolean(repository.private),
+        selected: false,
+        source: "github",
+      }));
+
+    mergeProjects(projects);
+    const privateCount = projects.filter((project) => project.private).length;
+    elements.projectStatus.textContent =
+      `Loaded ${plural(projects.length, "repository", "repositories")}` +
+      (token ? ` (${privateCount} private)` : "") +
+      ` for @${login}.` +
+      (state.github.mode === "token" && !token ? " Connect a token to include private ones." : "");
+  } catch (error) {
+    const hasGithubProjects = state.projects.some((project) => project.source === "github");
+    if (token && error.status === 401) {
+      elements.projectStatus.textContent = "GitHub rejected this token. Check it hasn't expired or been revoked.";
+    } else if (!token && error.status === 404) {
+      elements.projectStatus.textContent = `GitHub has no user called @${username}.`;
+    } else if (error.status === 403) {
+      elements.projectStatus.textContent = "GitHub refused the request (rate limit or missing permission). Try again later or connect a token.";
+    } else if (!token && username.toLowerCase() === "syrthax" && !hasGithubProjects) {
+      mergeProjects(bundledGithubProjects);
+      elements.projectStatus.textContent = "GitHub is unreachable, so the bundled project list for @Syrthax is shown.";
+    } else {
+      elements.projectStatus.textContent = "Couldn't reach GitHub. Keeping the current project list.";
+    }
+  } finally {
+    setGithubBusy(false);
+  }
+}
+
+// Reads a key, moving data saved under the pre-rename (NiaCina) key across the first time.
+function readStorage(key) {
+  const current = localStorage.getItem(key);
+  if (current !== null) {
+    return current;
+  }
+  const legacy = localStorage.getItem(LEGACY_STORAGE_KEYS[key]);
+  if (legacy !== null) {
+    localStorage.setItem(key, legacy);
+    localStorage.removeItem(LEGACY_STORAGE_KEYS[key]);
+  }
+  return legacy;
+}
+
+function readStoredToken() {
+  try {
+    return readStorage(TOKEN_KEY) || "";
+  } catch (error) {
+    return "";
+  }
+}
+
+function storeToken() {
+  try {
+    if (elements.rememberToken.checked && state.github.token) {
+      localStorage.setItem(TOKEN_KEY, state.github.token);
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+    }
+  } catch (error) {
+    // Storage blocked: the token simply lasts for this page session.
+  }
+}
+
+function connectToken() {
+  const token = elements.githubToken.value.trim();
+  if (!token) {
+    elements.projectStatus.textContent = "Paste a token first.";
+    elements.githubToken.focus();
+    return;
+  }
+  state.github.token = token;
+  storeToken();
+  setGithubMode("token");
+  scheduleSave();
+  loadGithubProjects();
+}
+
+function disconnectToken() {
+  state.github.token = "";
+  elements.githubToken.value = "";
+  storeToken();
+  setGithubMode("public");
+  scheduleSave();
+  loadGithubProjects();
+}
+
+// ---------------------------------------------------------------------------
+// Persistence: this browser's localStorage, plus JSON export/import for backups.
+// The GitHub token is stored separately and never exported.
+// ---------------------------------------------------------------------------
 
 function snapshot() {
+  const legacyUnresolved = [...state.legacySelectedUrls].filter(
+    (url) => !state.projects.some((project) => project.url === url),
+  );
+
   return {
-    version: 1,
+    version: 2,
     template: state.template,
-    profile: Object.fromEntries(PROFILE_FIELDS.map((field) => [field, elements[field].value])),
-    entries: state.entries,
+    accent: state.accent,
+    hidePrivateLinks: state.hidePrivateLinks,
+    githubMode: state.github.mode,
+    profile: {
+      ...Object.fromEntries(PROFILE_FIELDS.map((field) => [field, elements[field].value])),
+      skills: state.skills.join(", "),
+    },
+    entries: Object.fromEntries(
+      Object.entries(state.entries).map(([section, entries]) => [
+        section,
+        entries.map(({ collapsed, ...entry }) => entry),
+      ]),
+    ),
     manualProjects: state.projects.filter((project) => project.source === "manual"),
-    selectedGithubUrls: state.projects
+    selectedGithubProjects: state.projects
       .filter((project) => project.source === "github" && project.selected)
-      .map((project) => project.url),
+      .map(({ id, name, description, tech, language, topics, url, private: isPrivate }) => ({
+        id,
+        name,
+        description,
+        tech,
+        language,
+        topics,
+        url,
+        private: isPrivate,
+      })),
+    selectedGithubUrls: legacyUnresolved,
   };
 }
 
-function applySnapshot(data) {
+function applySnapshot(data, { dropLegacyDefaults = false } = {}) {
   if (!data || typeof data !== "object") {
     throw new Error("Invalid resume data");
   }
 
-  if (typeof data.template === "string") {
-    state.template = data.template;
+  const profile = data.profile && typeof data.profile === "object" ? data.profile : {};
+  const legacyValue = (field) =>
+    dropLegacyDefaults && profile[field] === LEGACY_DEFAULTS[field] ? "" : profile[field];
+
+  if (typeof data.template === "string") state.template = data.template;
+  if (typeof data.accent === "string") {
+    state.accent = dropLegacyDefaults && data.accent === LEGACY_DEFAULT_ACCENT ? DEFAULT_ACCENT : data.accent;
   }
+  if (typeof data.hidePrivateLinks === "boolean") state.hidePrivateLinks = data.hidePrivateLinks;
+  if (typeof data.githubMode === "string") state.github.mode = data.githubMode;
 
   PROFILE_FIELDS.forEach((field) => {
-    if (typeof data.profile?.[field] === "string") {
-      elements[field].value = data.profile[field];
+    if (typeof profile[field] === "string") {
+      elements[field].value = legacyValue(field);
     }
   });
+  if (typeof profile.skills === "string") {
+    state.skills = normaliseList(legacyValue("skills"));
+  }
 
   Object.keys(ENTRY_SECTIONS).forEach((section) => {
     const saved = data.entries?.[section];
-    if (Array.isArray(saved)) {
-      state.entries[section] = saved
-        .filter((entry) => entry && typeof entry === "object")
-        .map((entry) => createEntry({ ...entry, include: entry.include !== false }));
+    if (!Array.isArray(saved)) {
+      return;
     }
+    const isLegacySample = (dropLegacyDefaults && LEGACY_SAMPLE_ENTRIES[section]) || (() => false);
+    const entries = saved
+      .filter((entry) => entry && typeof entry === "object" && !isLegacySample(entry))
+      .map((entry) => createEntry({ ...entry, include: entry.include !== false }));
+    entries.forEach((entry) => {
+      entry.collapsed = entryHasContent(section, entry);
+    });
+    // Keep an empty starter card for the main sections so the fields are visible.
+    state.entries[section] = entries.length || !["experience", "education"].includes(section) ? entries : [createEntry()];
   });
 
-  const selectedUrls = new Set(Array.isArray(data.selectedGithubUrls) ? data.selectedGithubUrls : []);
-  const manualProjects = Array.isArray(data.manualProjects)
-    ? data.manualProjects
-        .filter((project) => project && typeof project.name === "string")
-        .map((project, index) => ({
-          id: typeof project.id === "string" ? project.id : `manual-${Date.now()}-${index}`,
-          name: project.name,
-          description: String(project.description ?? ""),
-          tech: String(project.tech ?? ""),
-          url: normaliseUrl(project.url),
-          selected: Boolean(project.selected),
-          source: "manual",
-        }))
-    : [];
+  const toProject = (project, index, source) => ({
+    id: typeof project.id === "string" ? project.id : `${source}-${Date.now()}-${index}`,
+    name: project.name,
+    description: String(project.description ?? ""),
+    tech: String(project.tech ?? ""),
+    language: String(project.language ?? project.tech ?? ""),
+    topics: Array.isArray(project.topics) ? project.topics : [],
+    url: normaliseUrl(project.url),
+    private: Boolean(project.private),
+    selected: source === "github" ? true : project.selected !== false,
+    source,
+  });
+  const valid = (list) => (Array.isArray(list) ? list.filter((project) => project && typeof project.name === "string") : []);
 
+  state.legacySelectedUrls = new Set(Array.isArray(data.selectedGithubUrls) ? data.selectedGithubUrls : []);
   state.projects = [
-    ...state.projects
-      .filter((project) => project.source === "github")
-      .map((project) => ({ ...project, selected: selectedUrls.has(project.url) })),
-    ...manualProjects,
+    ...valid(data.selectedGithubProjects).map((project, index) => toProject(project, index, "github")),
+    ...valid(data.manualProjects).map((project, index) => toProject(project, index, "manual")),
   ];
 }
 
@@ -680,28 +1294,36 @@ function scheduleSave() {
   saveTimer = setTimeout(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot()));
-      elements.saveStatus.textContent = "Saved in this browser.";
+      elements.saveStatus.textContent = "Saved";
     } catch (error) {
-      elements.saveStatus.textContent = "Autosave unavailable — use Export JSON to keep a copy.";
+      elements.saveStatus.textContent = "Autosave unavailable. Use Export to keep a copy.";
     }
   }, 300);
 }
 
 function loadSaved() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = readStorage(STORAGE_KEY);
     if (raw) {
-      applySnapshot(JSON.parse(raw));
+      applySnapshot(JSON.parse(raw), { dropLegacyDefaults: true });
     }
   } catch (error) {
     elements.saveStatus.textContent = "Couldn't restore saved data, starting fresh.";
   }
+
+  state.github.token = readStoredToken();
+  elements.rememberToken.checked = Boolean(state.github.token);
+  elements.githubToken.value = state.github.token;
 }
 
 function renderAll() {
   applyTemplate(state.template);
+  applyAccent(state.accent);
+  setGithubMode(state.github.mode);
+  lastWarningHtml = null;
+  renderSkills();
   Object.keys(ENTRY_SECTIONS).forEach(renderEntryEditor);
-  renderProjectChecklist();
+  renderProjects();
 }
 
 function exportJson() {
@@ -710,7 +1332,7 @@ function exportJson() {
   const link = document.createElement("a");
   const slug = (elements.fullName.value.trim() || "resume").toLowerCase().replace(/[^a-z0-9]+/g, "-");
   link.href = url;
-  link.download = `${slug}-niacina.json`;
+  link.download = `${slug}-hiresume.json`;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -725,59 +1347,346 @@ async function importJson(event) {
   try {
     applySnapshot(JSON.parse(await file.text()));
     renderAll();
-    elements.saveStatus.textContent = `Imported ${file.name}.`;
+    elements.saveStatus.textContent = `Imported ${file.name}`;
+    loadGithubProjects();
   } catch (error) {
-    elements.saveStatus.textContent = `Couldn't import ${file.name}: not a NiaCina JSON file.`;
+    elements.saveStatus.textContent = `Couldn't import ${file.name}: not a HiResume file.`;
   }
 }
 
 function resetAll() {
-  if (!window.confirm("Clear all saved resume data from this browser?")) {
+  if (!window.confirm("Clear all saved resume data (and any remembered GitHub token) from this browser?")) {
     return;
   }
   clearTimeout(saveTimer);
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    [STORAGE_KEY, TOKEN_KEY, ...Object.values(LEGACY_STORAGE_KEYS)].forEach((key) => localStorage.removeItem(key));
   } catch (error) {
     // Nothing stored or storage blocked; the reload still restores defaults.
   }
   window.location.reload();
 }
 
+// ---------------------------------------------------------------------------
+// Elastic overscroll: pulling past the top or bottom stretches the content,
+// then a spring pulls it back. Native bounce is turned off in CSS so every
+// browser behaves the same.
+//
+// The stretch is a spring simulated every animation frame. Wheel input pushes
+// against the spring, so the moment input stops (including the trailing
+// momentum events a trackpad sends) the content settles back smoothly
+// instead of waiting on a timer. Touch drags follow the finger directly.
+// ---------------------------------------------------------------------------
+
+const OVERSCROLL_MAX = 120;
+const SPRING_STIFFNESS = 380;
+// Critically damped: returns as fast as possible without wobbling.
+const SPRING_DAMPING = 2 * Math.sqrt(SPRING_STIFFNESS);
+
+// iOS-style rubber band: resistance grows smoothly as the pull gets longer.
+function rubberBand(distance) {
+  return OVERSCROLL_MAX * (1 - 1 / ((distance * 0.55) / OVERSCROLL_MAX + 1));
+}
+
+function setupElasticOverscroll({ target, eventSource, getBounds, ignore = () => false }) {
+  let offset = 0;
+  let velocity = 0;
+  let frame = 0;
+  let lastTime = 0;
+  let touch = null;
+
+  const render = () => {
+    if (!offset) {
+      target.style.transform = "";
+      target.style.willChange = "";
+      return;
+    }
+    target.style.willChange = "transform";
+    target.style.transformOrigin = offset > 0 ? "50% 0" : "50% 100%";
+    target.style.transform = `translateY(${(offset * 0.4).toFixed(2)}px) scaleY(${(1 + Math.abs(offset) / 1000).toFixed(4)})`;
+  };
+
+  const step = (time) => {
+    const dt = Math.min(0.032, (time - lastTime) / 1000) || 1 / 60;
+    lastTime = time;
+
+    if (!touch?.pulling) {
+      velocity += (-SPRING_STIFFNESS * offset - SPRING_DAMPING * velocity) * dt;
+      offset += velocity * dt;
+      if (Math.abs(offset) < 0.1 && Math.abs(velocity) < 1) {
+        offset = 0;
+        velocity = 0;
+      }
+    }
+
+    render();
+    frame = offset || touch?.pulling ? requestAnimationFrame(step) : 0;
+  };
+
+  const animate = () => {
+    if (!frame) {
+      lastTime = performance.now();
+      frame = requestAnimationFrame(step);
+    }
+  };
+
+  const pushingPastEdge = (delta) => {
+    const { atTop, atBottom } = getBounds();
+    return (delta < 0 && atTop) || (delta > 0 && atBottom);
+  };
+
+  eventSource.addEventListener(
+    "wheel",
+    (event) => {
+      const delta = event.deltaY * (event.deltaMode === 1 ? 16 : 1);
+      if (event.ctrlKey || ignore(event) || !pushingPastEdge(delta)) {
+        return;
+      }
+      const resistance = (1 - Math.min(1, Math.abs(offset) / OVERSCROLL_MAX)) ** 2;
+      offset = Math.max(-OVERSCROLL_MAX, Math.min(OVERSCROLL_MAX, offset - delta * 0.6 * resistance));
+      velocity = 0;
+      animate();
+    },
+    { passive: true },
+  );
+
+  eventSource.addEventListener(
+    "touchstart",
+    (event) => {
+      touch = ignore(event) ? null : { lastY: event.touches[0].clientY, pulling: false, distance: 0 };
+    },
+    { passive: true },
+  );
+
+  eventSource.addEventListener(
+    "touchmove",
+    (event) => {
+      if (!touch) return;
+      const y = event.touches[0].clientY;
+      const delta = touch.lastY - y;
+      touch.lastY = y;
+
+      if (!touch.pulling) {
+        if (!pushingPastEdge(delta)) return;
+        touch.pulling = true;
+        touch.distance = 0;
+      }
+
+      // Distance pulled past the edge: positive past the top, negative past the bottom.
+      touch.distance -= delta;
+      if ((offset > 0 && touch.distance < 0) || (offset < 0 && touch.distance > 0)) {
+        touch.distance = 0;
+      }
+      offset = Math.sign(touch.distance) * rubberBand(Math.abs(touch.distance));
+      velocity = 0;
+      animate();
+    },
+    { passive: true },
+  );
+
+  const endTouch = () => {
+    touch = null;
+    if (offset) animate();
+  };
+  eventSource.addEventListener("touchend", endTouch);
+  eventSource.addEventListener("touchcancel", endTouch);
+}
+
+function setupOverscrollEffects() {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return;
+  }
+
+  const previewPane = document.querySelector(".preview-pane");
+  const previewScrolls = () => getComputedStyle(previewPane).overflowY === "auto";
+  const edge = (el) => ({
+    atTop: el.scrollTop <= 0,
+    atBottom: Math.ceil(el.scrollTop + el.clientHeight) >= el.scrollHeight,
+  });
+
+  setupElasticOverscroll({
+    target: document.querySelector(".layout"),
+    eventSource: window,
+    getBounds: () => edge(document.scrollingElement),
+    ignore: (event) =>
+      Boolean(document.querySelector("dialog[open]")) ||
+      (previewScrolls() && event.target instanceof Node && previewPane.contains(event.target)),
+  });
+
+  setupElasticOverscroll({
+    target: previewPane.querySelector(".page"),
+    eventSource: previewPane,
+    getBounds: () => edge(previewPane),
+    ignore: () => !previewScrolls(),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Events
+// ---------------------------------------------------------------------------
+
 PROFILE_FIELDS.forEach((field) => elements[field].addEventListener("input", updatePreview));
 
-elements.projectChecklist.addEventListener("change", (event) => {
-  const project = state.projects.find((entry) => entry.id === event.target.dataset.projectId);
-  if (project) {
-    project.selected = event.target.checked;
-    updatePreview();
+elements.skillInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" || event.key === ",") {
+    event.preventDefault();
+    commitSkillInput();
+  } else if (event.key === "Backspace" && !elements.skillInput.value && state.skills.length) {
+    removeSkill(state.skills.length - 1);
+  }
+});
+elements.skillInput.addEventListener("input", () => {
+  // Pasting "a, b, c" adds everything before the last comma straight away.
+  const value = elements.skillInput.value;
+  if (value.includes(",")) {
+    const parts = value.split(",");
+    elements.skillInput.value = parts.pop().trimStart();
+    addSkills(parts);
+  }
+});
+elements.skillInput.addEventListener("blur", commitSkillInput);
+elements.skillEditor.addEventListener("click", (event) => {
+  const removeButton = event.target.closest("[data-remove-skill]");
+  if (removeButton) {
+    removeSkill(Number(removeButton.dataset.removeSkill));
+  } else if (event.target === elements.skillEditor || event.target === elements.skillChips) {
+    elements.skillInput.focus();
   }
 });
 
-elements.projectChecklist.addEventListener("click", (event) => {
-  const id = event.target.closest("[data-remove-project]")?.dataset.removeProject;
-  if (!id) {
-    return;
+elements.importSkillsButton.addEventListener("click", openSkillImport);
+elements.addSkillsButton.addEventListener("click", addImportedSkills);
+elements.skillSearch.addEventListener("input", () => {
+  state.skillImport.page = 1;
+  renderSkillSuggestions();
+});
+elements.skillSuggestions.addEventListener("change", (event) => {
+  const { selected } = state.skillImport;
+  if (event.target.checked) {
+    selected.add(event.target.value);
+  } else {
+    selected.delete(event.target.value);
   }
-  state.projects = state.projects.filter((project) => project.id !== id);
-  renderProjectChecklist();
+  renderSkillSuggestions();
+});
+elements.toggleAllSkills.addEventListener("click", () => {
+  const { selected } = state.skillImport;
+  const filtered = filteredSkillSuggestions();
+  const selectAll = !filtered.every((skill) => selected.has(skill.name));
+  filtered.forEach((skill) => (selectAll ? selected.add(skill.name) : selected.delete(skill.name)));
+  renderSkillSuggestions();
+});
+elements.skillPager.addEventListener("click", (event) => {
+  const page = event.target.closest("[data-page]")?.dataset.page;
+  if (page) {
+    state.skillImport.page = Number(page);
+    renderSkillSuggestions();
+  }
 });
 
 Object.keys(ENTRY_SECTIONS).forEach(setupEntrySection);
 
+elements.openProjectsButton.addEventListener("click", () => {
+  state.projectDialog.page = 1;
+  elements.projectSearch.value = "";
+  elements.projectFilter.value = "all";
+  renderProjectDialog();
+  elements.projectDialog.showModal();
+});
+elements.openCustomProjectButton.addEventListener("click", () => {
+  elements.customProjectDialog.showModal();
+  document.getElementById("futureProjectName").focus();
+});
+elements.projectSearch.addEventListener("input", () => {
+  state.projectDialog.page = 1;
+  renderProjectDialog();
+});
+elements.projectFilter.addEventListener("change", () => {
+  state.projectDialog.page = 1;
+  renderProjectDialog();
+});
+elements.projectList.addEventListener("change", (event) => {
+  if (event.target.dataset.projectId) {
+    setProjectSelected(event.target.dataset.projectId, event.target.checked);
+  }
+});
+elements.projectList.addEventListener("click", (event) => {
+  const id = event.target.closest("[data-remove-project]")?.dataset.removeProject;
+  if (id) {
+    state.projects = state.projects.filter((project) => project.id !== id);
+    renderProjects();
+  }
+});
+elements.projectPager.addEventListener("click", (event) => {
+  const page = event.target.closest("[data-page]")?.dataset.page;
+  if (page) {
+    state.projectDialog.page = Number(page);
+    renderProjectDialog();
+  }
+});
+elements.selectedProjects.addEventListener("click", (event) => {
+  const id = event.target.closest("[data-deselect-project]")?.dataset.deselectProject;
+  if (id) {
+    setProjectSelected(id, false);
+  }
+});
+elements.futureProjectForm.addEventListener("submit", addFutureProject);
+
+document.addEventListener("change", (event) => {
+  if (event.target.matches("[data-hide-private-links]")) {
+    state.hidePrivateLinks = event.target.checked;
+    lastWarningHtml = null;
+    updatePreview();
+  }
+});
+
+elements.githubModeInputs.forEach((input) =>
+  input.addEventListener("change", () => {
+    setGithubMode(input.value);
+    scheduleSave();
+    if (state.github.mode === "public" || state.github.token) {
+      loadGithubProjects();
+    } else {
+      elements.projectStatus.textContent = "Paste a token and press Connect to list your private repositories.";
+      elements.githubToken.focus();
+    }
+  }),
+);
+elements.loadProjectsButton.addEventListener("click", loadGithubProjects);
+elements.connectTokenButton.addEventListener("click", connectToken);
+elements.githubToken.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    connectToken();
+  }
+});
+elements.rememberToken.addEventListener("change", storeToken);
+elements.disconnectTokenButton.addEventListener("click", disconnectToken);
+
+// Close dialogs from any [data-close] button or a click on the backdrop.
+document.querySelectorAll("dialog.modal").forEach((dialog) =>
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog || event.target.closest("[data-close]")) {
+      dialog.close();
+    }
+  }),
+);
+
+elements.colorPicker.addEventListener("input", (event) => {
+  applyAccent(event.target.value);
+  scheduleSave();
+});
 elements.templatePicker.addEventListener("change", (event) => {
   applyTemplate(event.target.value);
   scheduleSave();
 });
 
-elements.loadProjectsButton.addEventListener("click", loadGithubProjects);
-elements.futureProjectForm.addEventListener("submit", addFutureProject);
 elements.exportButton.addEventListener("click", exportJson);
 elements.importInput.addEventListener("change", importJson);
 elements.resetButton.addEventListener("click", resetAll);
-window.addEventListener("afterprint", () => elements.fullName.focus());
 elements.printResumeButton.addEventListener("click", () => window.print());
 
 loadSaved();
 renderAll();
+setupOverscrollEffects();
 loadGithubProjects();

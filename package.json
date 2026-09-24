@@ -1,9 +1,11 @@
 {
-  "name": "niacina",
+  "name": "hiresume",
   "version": "1.0.0",
-  "description": "A resume project selector so that you dont need to type new resume everytime for different project showcase",
+  "description": "Resume builder that pulls in your GitHub projects",
   "scripts": {
-    "start": "python3 -m http.server 4173",
+    "start": "python3 serve.py 4173",
+    "build": "rm -rf dist && mkdir dist && cp index.html script.js styles.css logo.svg dist/",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name hiresume --branch main",
     "test": "echo \"No automated tests configured\""
   },
   "repository": {

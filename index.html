@@ -3,231 +3,385 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>NiaCina Resume Builder</title>
+    <title>HiResume</title>
+    <link rel="icon" href="./logo.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <header class="hero">
-      <div>
-        <p class="eyebrow">NiaCina</p>
-        <h1>Build a project-focused resume in minutes</h1>
-        <p class="subtitle">
-          Fill in your details on the left, preview your resume on the right, and choose which GitHub projects should appear.
-          Everything is saved in this browser automatically.
-        </p>
-      </div>
-      <div class="hero-actions">
-        <button id="printResumeButton" type="button">Print / Save Resume PDF</button>
-        <div class="secondary-actions">
-          <button id="exportButton" type="button" class="ghost">Export JSON</button>
-          <label class="ghost file-button">
-            Import JSON
-            <input id="importInput" type="file" accept="application/json,.json" hidden />
-          </label>
-          <button id="resetButton" type="button" class="ghost danger">Reset</button>
-        </div>
-        <p id="saveStatus" class="status save-status" aria-live="polite"></p>
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="HiResume home">
+        <img class="brand-logo" src="./logo.svg" alt="" width="30" height="24" />
+        <span class="brand-name">HiResume</span>
+      </a>
+      <div class="topbar-actions">
+        <span id="saveStatus" class="save-status" aria-live="polite"></span>
+        <button id="exportButton" type="button" class="ghost">Export</button>
+        <label class="ghost file-button">
+          Import
+          <input id="importInput" type="file" accept="application/json,.json" hidden />
+        </label>
+        <button id="resetButton" type="button" class="ghost danger">Reset</button>
+        <button id="printResumeButton" type="button">Save as PDF</button>
       </div>
     </header>
 
     <main class="layout">
-      <section class="panel form-panel">
-        <form id="resumeForm">
-          <div class="section-heading">
-            <h2>Resume details</h2>
-            <p>All fields update the preview instantly.</p>
+      <section class="editor" aria-label="Resume editor">
+        <details class="card" open>
+          <summary>
+            <span class="card-title">Basics</span>
+            <span class="card-meta">Name, title and contact</span>
+          </summary>
+          <div class="card-body">
+            <div class="form-grid">
+              <label>
+                Full name
+                <input id="fullName" type="text" placeholder="Jane Doe" autocomplete="name" />
+              </label>
+              <label>
+                Professional title
+                <input id="headline" type="text" placeholder="Frontend Developer" />
+              </label>
+              <label>
+                Email
+                <input id="email" type="email" placeholder="jane@example.com" autocomplete="email" />
+              </label>
+              <label>
+                Phone
+                <input id="phone" type="tel" placeholder="+91 98765 43210" autocomplete="tel" />
+              </label>
+              <label>
+                Location
+                <input id="location" type="text" placeholder="Bengaluru, India · Open to remote" />
+              </label>
+              <label>
+                GitHub username
+                <input id="githubUsername" type="text" placeholder="octocat" autocomplete="off" spellcheck="false" />
+              </label>
+              <label>
+                Website / portfolio
+                <input id="website" type="url" placeholder="https://janedoe.dev" />
+              </label>
+              <label>
+                LinkedIn
+                <input id="linkedin" type="url" placeholder="https://linkedin.com/in/janedoe" />
+              </label>
+            </div>
           </div>
+        </details>
 
-          <div class="form-grid">
+        <details class="card" open>
+          <summary>
+            <span class="card-title">Summary</span>
+            <span class="card-meta">2–3 lines about you</span>
+          </summary>
+          <div class="card-body">
             <label>
-              Full name
-              <input id="fullName" name="fullName" type="text" value="Your Name" />
+              <span class="sr-only">Professional summary</span>
+              <textarea
+                id="summary"
+                rows="4"
+                placeholder="Frontend developer who ships fast, accessible web apps. Comfortable across React, TypeScript and Node.js, and enjoys turning rough ideas into polished products."
+              ></textarea>
             </label>
-            <label>
-              Professional title
-              <input id="headline" name="headline" type="text" value="Frontend Developer" />
-            </label>
-            <label>
-              Email
-              <input id="email" name="email" type="email" value="you@example.com" />
-            </label>
-            <label>
-              Phone
-              <input id="phone" name="phone" type="text" value="+00 123 456 7890" />
-            </label>
-            <label>
-              Location
-              <input id="location" name="location" type="text" value="Remote" />
-            </label>
-            <label>
-              Website / portfolio
-              <input id="website" name="website" type="url" placeholder="https://yoursite.dev" />
-            </label>
-            <label>
-              LinkedIn
-              <input id="linkedin" name="linkedin" type="url" placeholder="https://linkedin.com/in/you" />
-            </label>
-            <label>
-              GitHub username
-              <div class="inline-field">
-                <input id="githubUsername" name="githubUsername" type="text" value="Syrthax" />
-                <button id="loadProjectsButton" type="button">Load projects</button>
+          </div>
+        </details>
+
+        <details class="card" open>
+          <summary>
+            <span class="card-title">Skills &amp; languages</span>
+            <span id="skillsCount" class="badge"></span>
+          </summary>
+          <div class="card-body">
+            <div class="field">
+              <div class="field-header">
+                <label for="skillInput">Skills</label>
+                <button id="importSkillsButton" type="button" class="ghost small">Import from GitHub</button>
               </div>
-            </label>
-          </div>
-
-          <label>
-            Professional summary
-            <textarea id="summary" name="summary" rows="4">Write a short summary that highlights your strengths, preferred technologies, and the value you bring to a team.</textarea>
-          </label>
-
-          <label>
-            Skills <span class="hint">comma separated</span>
-            <textarea id="skills" name="skills" rows="3">JavaScript, TypeScript, React, HTML, CSS, Node.js</textarea>
-          </label>
-
-          <label>
-            Languages <span class="hint">comma separated, e.g. English (Fluent)</span>
-            <input id="languages" name="languages" type="text" placeholder="English (Fluent), Hindi (Native)" />
-          </label>
-        </form>
-
-        <section class="entry-section" data-section="experience">
-          <div class="section-heading">
-            <h2>Experience</h2>
-            <p>Jobs, internships, freelance or volunteer roles. Put one achievement per line.</p>
-          </div>
-          <div class="entry-list"></div>
-          <button type="button" class="add-entry ghost">+ Add experience</button>
-        </section>
-
-        <section class="entry-section" data-section="education">
-          <div class="section-heading">
-            <h2>Education</h2>
-            <p>Degrees, schools and relevant coursework.</p>
-          </div>
-          <div class="entry-list"></div>
-          <button type="button" class="add-entry ghost">+ Add education</button>
-        </section>
-
-        <section class="project-controls">
-          <div class="section-heading">
-            <h2>Projects to showcase</h2>
-            <p>Check the projects that should appear on your resume.</p>
-          </div>
-
-          <p id="projectStatus" class="status">Loading GitHub projects...</p>
-          <div id="projectChecklist" class="project-checklist" aria-live="polite"></div>
-        </section>
-
-        <section class="future-projects">
-          <div class="section-heading">
-            <h2>Add future projects</h2>
-            <p>Save upcoming or private work and include it in the resume whenever you need it.</p>
-          </div>
-
-          <form id="futureProjectForm" class="future-project-form">
+              <div class="chip-input" id="skillEditor">
+                <ul id="skillChips" class="chip-list"></ul>
+                <input id="skillInput" type="text" placeholder="Type a skill and press Enter" autocomplete="off" />
+              </div>
+              <p class="hint">Press Enter or comma to add. Paste a comma-separated list to add several at once.</p>
+            </div>
             <label>
-              Project name
-              <input id="futureProjectName" name="futureProjectName" type="text" placeholder="AI Resume Assistant" />
+              Languages
+              <input id="languages" type="text" placeholder="English (Fluent), Hindi (Native)" />
             </label>
-            <label>
-              Technologies
-              <input id="futureProjectTech" name="futureProjectTech" type="text" placeholder="React, Node.js, OpenAI API" />
-            </label>
-            <label>
-              Link
-              <input id="futureProjectLink" name="futureProjectLink" type="url" placeholder="https://example.com/project" />
-            </label>
-            <label>
-              Description
-              <textarea id="futureProjectDescription" name="futureProjectDescription" rows="3" placeholder="Explain what the project solves and what you contributed."></textarea>
-            </label>
-            <button type="submit">Add future project</button>
-          </form>
-        </section>
-
-        <section class="entry-section" data-section="certifications">
-          <div class="section-heading">
-            <h2>Certifications</h2>
-            <p>Courses, licences and certificates.</p>
           </div>
-          <div class="entry-list"></div>
-          <button type="button" class="add-entry ghost">+ Add certification</button>
-        </section>
+        </details>
 
-        <section class="entry-section" data-section="achievements">
-          <div class="section-heading">
-            <h2>Achievements &amp; awards</h2>
-            <p>Hackathon wins, scholarships, publications, leadership.</p>
+        <details class="card entry-section" data-section="experience" open>
+          <summary>
+            <span class="card-title">Experience</span>
+            <span class="badge" data-count></span>
+          </summary>
+          <div class="card-body">
+            <p class="hint">Jobs, internships, freelance or volunteer roles. Write one achievement per line.</p>
+            <div class="entry-list"></div>
+            <button type="button" class="add-entry ghost">+ Add experience</button>
           </div>
-          <div class="entry-list"></div>
-          <button type="button" class="add-entry ghost">+ Add achievement</button>
-        </section>
+        </details>
+
+        <details class="card entry-section" data-section="education" open>
+          <summary>
+            <span class="card-title">Education</span>
+            <span class="badge" data-count></span>
+          </summary>
+          <div class="card-body">
+            <div class="entry-list"></div>
+            <button type="button" class="add-entry ghost">+ Add education</button>
+          </div>
+        </details>
+
+        <details class="card" open>
+          <summary>
+            <span class="card-title">Projects</span>
+            <span id="projectsCount" class="badge"></span>
+          </summary>
+          <div class="card-body">
+            <div id="selectedProjects" class="selected-projects"></div>
+            <div class="private-warning" data-private-warning hidden></div>
+            <div class="button-row">
+              <button id="openProjectsButton" type="button">Choose projects</button>
+              <button id="openCustomProjectButton" type="button" class="ghost">+ Custom project</button>
+            </div>
+
+            <div class="github-connect">
+              <div class="github-connect-head">
+                <strong>GitHub source</strong>
+                <div class="segmented" role="radiogroup" aria-label="GitHub access">
+                  <label><input type="radio" name="githubMode" value="public" checked /> Public repos</label>
+                  <label><input type="radio" name="githubMode" value="token" /> Include private</label>
+                </div>
+              </div>
+
+              <div id="publicMode" class="github-mode">
+                <p class="hint">Uses the GitHub username from Basics. Only public repositories are visible this way.</p>
+                <button id="loadProjectsButton" type="button" class="ghost small">Reload repositories</button>
+              </div>
+
+              <div id="tokenMode" class="github-mode" hidden>
+                <p class="hint">
+                  Paste a
+                  <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">fine-grained personal access token</a>
+                  with <em>Metadata: read-only</em> access to the repositories you want to list. It is sent only to api.github.com and is never included in exports.
+                </p>
+                <div class="inline-field">
+                  <input id="githubToken" type="password" placeholder="github_pat_…" autocomplete="off" spellcheck="false" aria-label="GitHub personal access token" />
+                  <button id="connectTokenButton" type="button" class="small">Connect</button>
+                </div>
+                <div class="token-options">
+                  <label class="checkbox">
+                    <input id="rememberToken" type="checkbox" />
+                    Remember token on this device
+                  </label>
+                  <button id="disconnectTokenButton" type="button" class="link-button" hidden>Disconnect</button>
+                </div>
+              </div>
+
+              <p id="projectStatus" class="status" aria-live="polite"></p>
+            </div>
+          </div>
+        </details>
+
+        <details class="card entry-section" data-section="certifications">
+          <summary>
+            <span class="card-title">Certifications</span>
+            <span class="badge" data-count></span>
+          </summary>
+          <div class="card-body">
+            <div class="entry-list"></div>
+            <button type="button" class="add-entry ghost">+ Add certification</button>
+          </div>
+        </details>
+
+        <details class="card entry-section" data-section="achievements">
+          <summary>
+            <span class="card-title">Achievements &amp; awards</span>
+            <span class="badge" data-count></span>
+          </summary>
+          <div class="card-body">
+            <p class="hint">Hackathon wins, scholarships, publications, leadership.</p>
+            <div class="entry-list"></div>
+            <button type="button" class="add-entry ghost">+ Add achievement</button>
+          </div>
+        </details>
       </section>
 
-      <section class="panel preview-panel">
-        <fieldset id="templatePicker" class="template-picker">
-          <legend>Template</legend>
-          <label><input type="radio" name="template" value="modern" checked /> Modern</label>
-          <label><input type="radio" name="template" value="classic" /> Classic</label>
-          <label><input type="radio" name="template" value="compact" /> Compact</label>
-          <label><input type="radio" name="template" value="sidebar" /> Sidebar</label>
-        </fieldset>
+      <section class="preview-pane" aria-label="Resume preview">
+        <div class="preview-toolbar">
+          <fieldset id="templatePicker" class="template-picker">
+            <legend class="sr-only">Template</legend>
+            <span class="picker-label" aria-hidden="true">Template</span>
+            <div class="segmented">
+              <label><input type="radio" name="template" value="modern" checked /> Modern</label>
+              <label><input type="radio" name="template" value="classic" /> Classic</label>
+              <label><input type="radio" name="template" value="compact" /> Compact</label>
+              <label><input type="radio" name="template" value="sidebar" /> Sidebar</label>
+            </div>
+          </fieldset>
 
-        <div id="resumePreview" class="resume-preview template-modern">
-          <header class="resume-header">
-            <h1 id="previewFullName">Your Name</h1>
-            <p id="previewHeadline">Frontend Developer</p>
-            <div id="previewContact" class="contact-line"></div>
-          </header>
+          <fieldset id="colorPicker" class="template-picker color-picker">
+            <legend class="sr-only">Color</legend>
+            <span class="picker-label" aria-hidden="true">Color</span>
+            <label title="Navy"><input type="radio" name="accent" value="#1e3a8a" checked /><span class="swatch" style="--swatch: #1e3a8a"></span><span class="sr-only">Navy</span></label>
+            <label title="Ink"><input type="radio" name="accent" value="#1c1b18" /><span class="swatch" style="--swatch: #1c1b18"></span><span class="sr-only">Ink</span></label>
+            <label title="Slate"><input type="radio" name="accent" value="#475569" /><span class="swatch" style="--swatch: #475569"></span><span class="sr-only">Slate</span></label>
+            <label title="Teal"><input type="radio" name="accent" value="#0f766e" /><span class="swatch" style="--swatch: #0f766e"></span><span class="sr-only">Teal</span></label>
+            <label title="Forest"><input type="radio" name="accent" value="#166534" /><span class="swatch" style="--swatch: #166534"></span><span class="sr-only">Forest</span></label>
+            <label title="Burgundy"><input type="radio" name="accent" value="#9f1239" /><span class="swatch" style="--swatch: #9f1239"></span><span class="sr-only">Burgundy</span></label>
+            <label title="Rust"><input type="radio" name="accent" value="#b45309" /><span class="swatch" style="--swatch: #b45309"></span><span class="sr-only">Rust</span></label>
+            <label title="Indigo"><input type="radio" name="accent" value="#4338ca" /><span class="swatch" style="--swatch: #4338ca"></span><span class="sr-only">Indigo</span></label>
+            <label class="custom-color" title="Custom color">
+              <input id="customAccent" type="color" value="#1e3a8a" aria-label="Custom color" />
+              Custom
+            </label>
+          </fieldset>
+        </div>
 
-          <div class="resume-main">
-            <section class="resume-section" id="previewSummarySection">
-              <h2>Profile</h2>
-              <p id="previewSummary"></p>
-            </section>
+        <div class="private-warning" data-private-warning hidden></div>
 
-            <section class="resume-section" id="previewExperienceSection">
-              <h2>Experience</h2>
-              <div id="previewExperience" class="entry-preview-list"></div>
-            </section>
+        <div class="page">
+          <div id="resumePreview" class="resume-preview template-modern">
+            <header class="resume-header">
+              <h1 id="previewFullName">Your Name</h1>
+              <p id="previewHeadline"></p>
+              <div id="previewContact" class="contact-line"></div>
+            </header>
 
-            <section class="resume-section" id="previewProjectsSection">
-              <h2>Selected Projects</h2>
-              <div id="previewProjects" class="project-preview-list"></div>
-            </section>
+            <div class="resume-main">
+              <section class="resume-section" id="previewSummarySection">
+                <h2>Profile</h2>
+                <p id="previewSummary"></p>
+              </section>
 
-            <section class="resume-section" id="previewAchievementsSection">
-              <h2>Achievements &amp; Awards</h2>
-              <div id="previewAchievements" class="entry-preview-list"></div>
-            </section>
+              <section class="resume-section" id="previewExperienceSection">
+                <h2>Experience</h2>
+                <div id="previewExperience" class="entry-preview-list"></div>
+              </section>
+
+              <section class="resume-section" id="previewProjectsSection">
+                <h2>Selected Projects</h2>
+                <div id="previewProjects" class="project-preview-list"></div>
+              </section>
+
+              <section class="resume-section" id="previewAchievementsSection">
+                <h2>Achievements &amp; Awards</h2>
+                <div id="previewAchievements" class="entry-preview-list"></div>
+              </section>
+            </div>
+
+            <aside class="resume-side">
+              <section class="resume-section" id="previewEducationSection">
+                <h2>Education</h2>
+                <div id="previewEducation" class="entry-preview-list"></div>
+              </section>
+
+              <section class="resume-section" id="previewSkillsSection">
+                <h2>Skills</h2>
+                <ul id="previewSkills" class="pill-list"></ul>
+              </section>
+
+              <section class="resume-section" id="previewCertificationsSection">
+                <h2>Certifications</h2>
+                <div id="previewCertifications" class="entry-preview-list"></div>
+              </section>
+
+              <section class="resume-section" id="previewLanguagesSection">
+                <h2>Languages</h2>
+                <p id="previewLanguages"></p>
+              </section>
+            </aside>
           </div>
-
-          <aside class="resume-side">
-            <section class="resume-section" id="previewEducationSection">
-              <h2>Education</h2>
-              <div id="previewEducation" class="entry-preview-list"></div>
-            </section>
-
-            <section class="resume-section" id="previewSkillsSection">
-              <h2>Skills</h2>
-              <ul id="previewSkills" class="pill-list"></ul>
-            </section>
-
-            <section class="resume-section" id="previewCertificationsSection">
-              <h2>Certifications</h2>
-              <div id="previewCertifications" class="entry-preview-list"></div>
-            </section>
-
-            <section class="resume-section" id="previewLanguagesSection">
-              <h2>Languages</h2>
-              <p id="previewLanguages"></p>
-            </section>
-          </aside>
         </div>
       </section>
     </main>
+
+    <dialog id="projectDialog" class="modal" aria-labelledby="projectDialogTitle">
+      <div class="modal-header">
+        <div>
+          <h2 id="projectDialogTitle">Choose projects</h2>
+          <p id="projectDialogSummary" class="hint"></p>
+        </div>
+        <button type="button" class="icon-button" data-close aria-label="Close"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg></button>
+      </div>
+      <div class="modal-toolbar">
+        <input id="projectSearch" type="search" autofocus placeholder="Search by name, description or tech" aria-label="Search projects" />
+        <select id="projectFilter" aria-label="Filter projects">
+          <option value="all">All</option>
+          <option value="selected">Selected</option>
+          <option value="public">Public</option>
+          <option value="private">Private</option>
+          <option value="manual">Custom</option>
+        </select>
+      </div>
+      <div class="private-warning" data-private-warning hidden></div>
+      <div id="projectList" class="modal-list"></div>
+      <div class="modal-footer">
+        <div id="projectPager" class="pager"></div>
+        <button type="button" data-close>Done</button>
+      </div>
+    </dialog>
+
+    <dialog id="customProjectDialog" class="modal modal-small" aria-labelledby="customProjectTitle">
+      <form id="futureProjectForm" method="dialog">
+        <div class="modal-header">
+          <div>
+            <h2 id="customProjectTitle">Add a custom project</h2>
+            <p class="hint">Upcoming, private or non-GitHub work. It's selected for the resume straight away.</p>
+          </div>
+          <button type="button" class="icon-button" data-close aria-label="Close"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg></button>
+        </div>
+        <div class="modal-body">
+          <label>
+            Project name
+            <input id="futureProjectName" type="text" placeholder="AI Resume Assistant" required />
+          </label>
+          <label>
+            Technologies
+            <input id="futureProjectTech" type="text" placeholder="React, Node.js, OpenAI API" />
+          </label>
+          <label>
+            Link
+            <input id="futureProjectLink" type="url" placeholder="https://example.com/project" />
+          </label>
+          <label>
+            Description
+            <textarea id="futureProjectDescription" rows="3" placeholder="What the project solves and what you contributed."></textarea>
+          </label>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="ghost" data-close>Cancel</button>
+          <button type="submit">Add project</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="skillDialog" class="modal" aria-labelledby="skillDialogTitle">
+      <div class="modal-header">
+        <div>
+          <h2 id="skillDialogTitle">Import skills from GitHub</h2>
+          <p id="skillImportStatus" class="hint"></p>
+        </div>
+        <button type="button" class="icon-button" data-close aria-label="Close"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg></button>
+      </div>
+      <div class="modal-toolbar">
+        <input id="skillSearch" type="search" autofocus placeholder="Filter skills" aria-label="Filter skills" />
+        <button id="toggleAllSkills" type="button" class="ghost small">Select all</button>
+      </div>
+      <div id="skillSuggestions" class="modal-list skill-suggestions"></div>
+      <div class="modal-footer">
+        <div id="skillPager" class="pager"></div>
+        <div class="button-row">
+          <button type="button" class="ghost" data-close>Cancel</button>
+          <button id="addSkillsButton" type="button">Add selected</button>
+        </div>
+      </div>
+    </dialog>
 
     <script src="./script.js"></script>
   </body>
