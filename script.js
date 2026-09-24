@@ -284,7 +284,11 @@ function addFutureProject(event) {
 
 elements.loadProjectsButton.addEventListener("click", loadGithubProjects);
 elements.futureProjectForm.addEventListener("submit", addFutureProject);
-window.addEventListener("afterprint", () => elements.fullName.focus());
+window.addEventListener("afterprint", () => {
+  if (elements.printResumeButton.offsetParent !== null) {
+    elements.printResumeButton.focus();
+  }
+});
 elements.printResumeButton.addEventListener("click", () => window.print());
 
 updatePreview();
