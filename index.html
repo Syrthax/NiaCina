@@ -13,9 +13,21 @@
         <h1>Build a project-focused resume in minutes</h1>
         <p class="subtitle">
           Fill in your details on the left, preview your resume on the right, and choose which GitHub projects should appear.
+          Everything is saved in this browser automatically.
         </p>
       </div>
-      <button id="printResumeButton" type="button">Print / Save Resume PDF</button>
+      <div class="hero-actions">
+        <button id="printResumeButton" type="button">Print / Save Resume PDF</button>
+        <div class="secondary-actions">
+          <button id="exportButton" type="button" class="ghost">Export JSON</button>
+          <label class="ghost file-button">
+            Import JSON
+            <input id="importInput" type="file" accept="application/json,.json" hidden />
+          </label>
+          <button id="resetButton" type="button" class="ghost danger">Reset</button>
+        </div>
+        <p id="saveStatus" class="status save-status" aria-live="polite"></p>
+      </div>
     </header>
 
     <main class="layout">
@@ -48,6 +60,14 @@
               <input id="location" name="location" type="text" value="Remote" />
             </label>
             <label>
+              Website / portfolio
+              <input id="website" name="website" type="url" placeholder="https://yoursite.dev" />
+            </label>
+            <label>
+              LinkedIn
+              <input id="linkedin" name="linkedin" type="url" placeholder="https://linkedin.com/in/you" />
+            </label>
+            <label>
               GitHub username
               <div class="inline-field">
                 <input id="githubUsername" name="githubUsername" type="text" value="Syrthax" />
@@ -62,10 +82,33 @@
           </label>
 
           <label>
-            Skills
+            Skills <span class="hint">comma separated</span>
             <textarea id="skills" name="skills" rows="3">JavaScript, TypeScript, React, HTML, CSS, Node.js</textarea>
           </label>
+
+          <label>
+            Languages <span class="hint">comma separated, e.g. English (Fluent)</span>
+            <input id="languages" name="languages" type="text" placeholder="English (Fluent), Hindi (Native)" />
+          </label>
         </form>
+
+        <section class="entry-section" data-section="experience">
+          <div class="section-heading">
+            <h2>Experience</h2>
+            <p>Jobs, internships, freelance or volunteer roles. Put one achievement per line.</p>
+          </div>
+          <div class="entry-list"></div>
+          <button type="button" class="add-entry ghost">+ Add experience</button>
+        </section>
+
+        <section class="entry-section" data-section="education">
+          <div class="section-heading">
+            <h2>Education</h2>
+            <p>Degrees, schools and relevant coursework.</p>
+          </div>
+          <div class="entry-list"></div>
+          <button type="button" class="add-entry ghost">+ Add education</button>
+        </section>
 
         <section class="project-controls">
           <div class="section-heading">
@@ -103,6 +146,24 @@
             <button type="submit">Add future project</button>
           </form>
         </section>
+
+        <section class="entry-section" data-section="certifications">
+          <div class="section-heading">
+            <h2>Certifications</h2>
+            <p>Courses, licences and certificates.</p>
+          </div>
+          <div class="entry-list"></div>
+          <button type="button" class="add-entry ghost">+ Add certification</button>
+        </section>
+
+        <section class="entry-section" data-section="achievements">
+          <div class="section-heading">
+            <h2>Achievements &amp; awards</h2>
+            <p>Hackathon wins, scholarships, publications, leadership.</p>
+          </div>
+          <div class="entry-list"></div>
+          <button type="button" class="add-entry ghost">+ Add achievement</button>
+        </section>
       </section>
 
       <section class="panel preview-panel">
@@ -110,28 +171,47 @@
           <header class="resume-header">
             <h1 id="previewFullName">Your Name</h1>
             <p id="previewHeadline">Frontend Developer</p>
-            <div class="contact-line">
-              <span id="previewEmail">you@example.com</span>
-              <span id="previewPhone">+00 123 456 7890</span>
-              <span id="previewLocation">Remote</span>
-            </div>
+            <div id="previewContact" class="contact-line"></div>
           </header>
 
-          <section class="resume-section">
+          <section class="resume-section" id="previewSummarySection">
             <h2>Profile</h2>
-            <p id="previewSummary">
-              Write a short summary that highlights your strengths, preferred technologies, and the value you bring to a team.
-            </p>
+            <p id="previewSummary"></p>
           </section>
 
-          <section class="resume-section">
-            <h2>Skills</h2>
-            <ul id="previewSkills" class="pill-list"></ul>
+          <section class="resume-section" id="previewExperienceSection">
+            <h2>Experience</h2>
+            <div id="previewExperience" class="entry-preview-list"></div>
           </section>
 
           <section class="resume-section">
             <h2>Selected Projects</h2>
             <div id="previewProjects" class="project-preview-list"></div>
+          </section>
+
+          <section class="resume-section" id="previewEducationSection">
+            <h2>Education</h2>
+            <div id="previewEducation" class="entry-preview-list"></div>
+          </section>
+
+          <section class="resume-section" id="previewSkillsSection">
+            <h2>Skills</h2>
+            <ul id="previewSkills" class="pill-list"></ul>
+          </section>
+
+          <section class="resume-section" id="previewCertificationsSection">
+            <h2>Certifications</h2>
+            <div id="previewCertifications" class="entry-preview-list"></div>
+          </section>
+
+          <section class="resume-section" id="previewAchievementsSection">
+            <h2>Achievements &amp; Awards</h2>
+            <div id="previewAchievements" class="entry-preview-list"></div>
+          </section>
+
+          <section class="resume-section" id="previewLanguagesSection">
+            <h2>Languages</h2>
+            <p id="previewLanguages"></p>
           </section>
         </div>
       </section>

@@ -7,7 +7,7 @@
   --muted: #5d6985;
   --accent: #4f46e5;
   --accent-soft: #eef0ff;
-  --success: #198754;
+  --danger: #c0392b;
   --shadow: 0 20px 45px rgba(24, 32, 51, 0.08);
 }
 
@@ -39,6 +39,47 @@ button {
 
 button:hover {
   opacity: 0.95;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+button.ghost,
+.file-button {
+  display: inline-flex;
+  align-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+  padding: 0.6rem 1rem;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+button.ghost.danger {
+  color: var(--danger);
+  background: #fdeeee;
+}
+
+.icon-button {
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  line-height: 1;
+}
+
+.icon-button.danger {
+  background: #fdeeee;
+  color: var(--danger);
+}
+
+.hint {
+  font-weight: 400;
+  font-size: 0.85rem;
+  color: var(--muted);
 }
 
 label {
@@ -74,6 +115,25 @@ textarea {
   gap: 1rem;
   align-items: center;
   padding: 2rem 0 1rem;
+}
+
+.hero-actions {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: end;
+}
+
+.secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.save-status {
+  margin: 0;
+  font-size: 0.85rem;
+  min-height: 1.2em;
 }
 
 .eyebrow {
@@ -112,6 +172,12 @@ textarea {
   padding: 1.5rem;
   display: grid;
   gap: 1.5rem;
+  min-width: 0;
+}
+
+.form-panel > *,
+.form-grid > * {
+  min-width: 0;
 }
 
 .section-heading h2,
@@ -152,7 +218,14 @@ textarea {
   gap: 0.85rem;
 }
 
+.project-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
 .project-item {
+  flex: 1;
   display: flex;
   gap: 0.9rem;
   padding: 1rem;
@@ -180,6 +253,124 @@ textarea {
 
 .project-meta {
   font-size: 0.92rem;
+}
+
+.entry-section {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.entry-section .add-entry {
+  justify-self: start;
+}
+
+.entry-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.entry-card {
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  padding: 1rem;
+  background: #fcfcff;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.entry-card.is-excluded .entry-fields {
+  opacity: 0.55;
+}
+
+.entry-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.include-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.include-toggle input {
+  width: auto;
+}
+
+.entry-card-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.entry-fields {
+  margin: 0;
+}
+
+.entry-fields label {
+  font-size: 0.92rem;
+}
+
+.entry-fields .wide {
+  grid-column: 1 / -1;
+}
+
+.entry-preview-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.entry-preview h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.entry-preview-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+}
+
+.entry-sub,
+.entry-date,
+.entry-text {
+  color: var(--muted);
+}
+
+.entry-sub {
+  margin: 0.2rem 0 0;
+}
+
+.entry-date {
+  white-space: nowrap;
+  font-size: 0.92rem;
+}
+
+.entry-text {
+  margin: 0.35rem 0 0;
+  line-height: 1.5;
+}
+
+.bullets {
+  margin: 0.45rem 0 0;
+  padding-left: 1.2rem;
+  line-height: 1.5;
+}
+
+.contact-line a,
+.entry-text a,
+.resume-project a {
+  color: inherit;
 }
 
 .preview-panel {
@@ -238,11 +429,6 @@ textarea {
   border-radius: 16px;
 }
 
-.resume-project .project-check {
-  color: var(--success);
-  font-weight: 700;
-}
-
 .empty-state {
   margin: 0;
   padding: 1rem;
@@ -261,6 +447,12 @@ textarea {
   .hero {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .hero-actions,
+  .secondary-actions {
+    justify-items: start;
+    justify-content: flex-start;
   }
 
   .form-grid {
@@ -297,5 +489,24 @@ textarea {
     border: none;
     box-shadow: none;
     padding: 0;
+  }
+
+  .resume-section[data-empty] {
+    display: none;
+  }
+
+  .resume-section {
+    padding-top: 1rem;
+  }
+
+  .entry-preview,
+  .resume-project {
+    break-inside: avoid;
+  }
+
+  .contact-line a,
+  .resume-project a,
+  .entry-text a {
+    text-decoration: none;
   }
 }
